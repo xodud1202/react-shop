@@ -4,6 +4,8 @@ import ShopHeader from "@/components/header/ShopHeader";
 import { fetchShopHeaderServerData } from "@/lib/server/shopHeaderServerApi";
 import "./globals.css";
 import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
 
 export const metadata: Metadata = {
   title: "react-shop",
@@ -16,6 +18,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 헤더 공통 데이터(카테고리/브랜드)를 SSR로 조회합니다.
   const headerData = await fetchShopHeaderServerData();
 
   return (
