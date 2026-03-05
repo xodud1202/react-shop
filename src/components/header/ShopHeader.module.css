@@ -1,0 +1,306 @@
+.headerRoot {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.desktopHeader {
+  display: block;
+}
+
+.headerContainer {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 12px;
+  position: relative;
+}
+
+.headerRow {
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.logoWrap {
+  display: flex;
+  align-items: center;
+  width: 180px;
+  flex-shrink: 0;
+}
+
+.centerMenus {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 44px;
+}
+
+.brandMenuGroup {
+  position: relative;
+  height: 84px;
+  display: flex;
+  align-items: center;
+}
+
+.categoryMenuGroup {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  height: 84px;
+}
+
+.navButton {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111111;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+}
+
+.rightActions {
+  width: 180px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.iconButton {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  color: #111111;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.iconButton:hover {
+  background: #f3f4f6;
+}
+
+.layerPanel {
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 760px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.12);
+  z-index: 90;
+}
+
+.brandLayerInner {
+  padding: 28px 32px;
+}
+
+.layerTitle {
+  margin: 0 0 18px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #111111;
+  letter-spacing: 0.04em;
+}
+
+.brandGrid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.brandItem {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 0;
+  padding: 12px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  min-height: 110px;
+  font-size: 13px;
+  color: #111111;
+  cursor: pointer;
+}
+
+.brandItem:hover {
+  border-color: #111111;
+}
+
+.brandLogoWrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.brandLogoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.brandLogoFallback {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111111;
+}
+
+.brandName {
+  display: block;
+  width: 100%;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.searchLayerWrap {
+  position: relative;
+}
+
+.searchLayer {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 14px);
+  width: 440px;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.12);
+  z-index: 100;
+}
+
+.searchForm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.searchInput {
+  flex: 1;
+  height: 46px;
+  border: 2px solid #111111;
+  padding: 0 14px;
+  font-size: 15px;
+  outline: none;
+}
+
+.searchSubmitButton {
+  width: 46px;
+  height: 46px;
+  border: none;
+  background: #111111;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 17px;
+}
+
+.categoryLayer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% - 1px);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.12);
+  z-index: 95;
+}
+
+.categoryLayerInner {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 320px;
+}
+
+.level2Column {
+  border-right: 1px solid #f1f5f9;
+  padding: 28px 24px;
+}
+
+.level3Column {
+  padding: 28px 24px;
+}
+
+.level2List,
+.level3List {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.level2Button,
+.level3Button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 15px;
+  color: #111111;
+}
+
+.level2Button:hover,
+.level3Button:hover {
+  background: #f8fafc;
+}
+
+.level2ButtonActive {
+  font-weight: 700;
+  background: #f8fafc;
+}
+
+.emptyText {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.mobileHeader {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .desktopHeader {
+    display: none;
+  }
+
+  .mobileHeader {
+    display: block;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .mobileHeaderRow {
+    height: 64px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
