@@ -1,3 +1,5 @@
+import type { ShopGoodsCardItem } from "@/types/shopGoods";
+
 // 쇼핑몰 메인 배너 구분 코드를 정의합니다.
 export type ShopMainBannerDivCd = "BANNER_DIV_01" | "BANNER_DIV_02" | "BANNER_DIV_03" | "BANNER_DIV_04" | string;
 
@@ -13,15 +15,9 @@ export interface ShopMainImageBannerItem {
 }
 
 // 쇼핑몰 메인 상품 카드 아이템 타입을 정의합니다.
-export interface ShopMainGoodsItem {
+export interface ShopMainGoodsItem extends ShopGoodsCardItem {
   bannerNo: number;
   bannerTabNo: number;
-  goodsId: string;
-  goodsNm: string;
-  brandNm: string;
-  saleAmt: number;
-  imgPath: string;
-  imgUrl: string;
   dispOrd: number;
 }
 

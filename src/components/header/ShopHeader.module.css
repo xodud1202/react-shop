@@ -12,7 +12,7 @@
 
 .headerContainer {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1500px;
   margin: 0 auto;
   padding: 0 12px;
   position: relative;
@@ -64,6 +64,9 @@
   color: #111111;
   letter-spacing: -0.02em;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }
 
 .rightActions {
@@ -264,6 +267,8 @@
   cursor: pointer;
   font-size: 15px;
   color: #111111;
+  text-decoration: none;
+  display: block;
 }
 
 .level2Button:hover,

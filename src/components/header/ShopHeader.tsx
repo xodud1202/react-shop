@@ -123,6 +123,11 @@ export default function ShopHeader({ initialCategoryTree, initialBrands }: ShopH
     window.alert(`${menuName} 기능은 준비중입니다.`);
   };
 
+
+  // 카테고리 이동 URL을 생성합니다.
+  const buildCategoryHref = (categoryId: string) => {
+    return `/category?categoryId=${encodeURIComponent(categoryId)}`;
+  };
   return (
     <header className={styles.headerRoot}>
       <div className={styles.desktopHeader}>
@@ -177,15 +182,14 @@ export default function ShopHeader({ initialCategoryTree, initialBrands }: ShopH
 
               <div className={styles.categoryMenuGroup} onMouseLeave={handleCloseCategoryLayer}>
                 {categoryTree.map((level1Category) => (
-                  <button
+                  <Link
                     key={level1Category.categoryId}
-                    type="button"
+                    href={buildCategoryHref(level1Category.categoryId)}
                     className={styles.navButton}
                     onMouseEnter={() => handleEnterLevel1Category(level1Category.categoryId)}
-                    onClick={() => handlePlaceholderClick(level1Category.categoryNm)}
                   >
                     {level1Category.categoryNm}
-                  </button>
+                  </Link>
                 ))}
 
                 {isCategoryLayerOpen && activeLevel1Category && (
@@ -196,18 +200,17 @@ export default function ShopHeader({ initialCategoryTree, initialBrands }: ShopH
                         <ul className={styles.level2List}>
                           {activeLevel1Category.children.map((level2Category) => (
                             <li key={level2Category.categoryId}>
-                              <button
-                                type="button"
+                              <Link
+                                href={buildCategoryHref(level2Category.categoryId)}
                                 className={
                                   activeLevel2CategoryId === level2Category.categoryId
                                     ? `${styles.level2Button} ${styles.level2ButtonActive}`
                                     : styles.level2Button
                                 }
                                 onMouseEnter={() => setActiveLevel2CategoryId(level2Category.categoryId)}
-                                onClick={() => handlePlaceholderClick(level2Category.categoryNm)}
                               >
                                 {level2Category.categoryNm}
-                              </button>
+                              </Link>
                             </li>
                           ))}
                         </ul>
@@ -218,13 +221,9 @@ export default function ShopHeader({ initialCategoryTree, initialBrands }: ShopH
                         <ul className={styles.level3List}>
                           {(activeLevel2Category?.children ?? []).map((level3Category) => (
                             <li key={level3Category.categoryId}>
-                              <button
-                                type="button"
-                                className={styles.level3Button}
-                                onClick={() => handlePlaceholderClick(level3Category.categoryNm)}
-                              >
+                              <Link href={buildCategoryHref(level3Category.categoryId)} className={styles.level3Button}>
                                 {level3Category.categoryNm}
-                              </button>
+                              </Link>
                             </li>
                           ))}
                         </ul>
