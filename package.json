@@ -1,11 +1,11 @@
 {
-  "name": "react-shop",
+  "name": "shop",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "build": "next build",
-    "lint": "next lint",
-    "dev": "cross-env PORT=3014 next dev",
+    "lint": "eslint pages components hooks utils store types --ext .js,.jsx,.ts,.tsx",
+    "dev": "cross-env PORT=3014 next dev --webpack",
     "start": "cross-env PORT=3014 next start"
   },
   "dependencies": {
