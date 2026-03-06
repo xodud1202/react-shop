@@ -36,6 +36,11 @@
   width: 100%;
 }
 
+.imageBannerSwiper :global(.swiper-button-prev),
+.imageBannerSwiper :global(.swiper-button-next) {
+  color: #ffffff;
+}
+
 .imageBannerSlide {
   width: min(1480px, calc(100vw - 32px));
 }
@@ -55,7 +60,9 @@
 }
 
 .heroImage {
-  aspect-ratio: 16 / 7;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  background-color: #ffffff;
 }
 
 .bandImage {

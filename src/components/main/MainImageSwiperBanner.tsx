@@ -1,7 +1,7 @@
 "use client";
 
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay } from "swiper/modules";
+import { Autoplay, Navigation, Pagination } from "swiper/modules";
 import type { ShopMainImageBannerItem, ShopMainSection } from "@/types/shopMain";
 import styles from "./ShopMain.module.css";
 
@@ -47,6 +47,10 @@ export default function MainImageSwiperBanner({ section, variant }: MainImageSwi
 
   // 화면 타입에 맞는 이미지 비율 클래스를 선택합니다.
   const imageClassName = variant === "hero" ? styles.heroImage : styles.bandImage;
+  // 대배너인 경우 슬라이드 최대폭을 45vw로 제한합니다.
+  const heroSlideStyle = variant === "hero" ? { maxWidth: "45vw" } : undefined;
+  // 슬라이드가 2개 이상일 때만 loop/네비게이션/페이징을 활성화합니다.
+  const hasMultipleSlides = imageItemList.length > 1;
 
   // 이미지 아이템이 없으면 아무것도 렌더링하지 않습니다.
   if (imageItemList.length === 0) {
@@ -57,10 +61,12 @@ export default function MainImageSwiperBanner({ section, variant }: MainImageSwi
     <section className={`${styles.sectionBlock} ${styles.imageBannerSection}`}>
       <Swiper
         className={styles.imageBannerSwiper}
-        modules={[Autoplay]}
+        modules={[Autoplay, Navigation, Pagination]}
         slidesPerView="auto"
         centeredSlides
-        loop={imageItemList.length > 1}
+        loop={hasMultipleSlides}
+        navigation={hasMultipleSlides}
+        pagination={hasMultipleSlides ? { clickable: true } : false}
         autoplay={{
           delay: 5000,
           disableOnInteraction: false,
@@ -68,7 +74,7 @@ export default function MainImageSwiperBanner({ section, variant }: MainImageSwi
         }}
       >
         {imageItemList.map((item) => (
-          <SwiperSlide key={item.imageBannerNo} className={styles.imageBannerSlide}>
+          <SwiperSlide key={item.imageBannerNo} className={styles.imageBannerSlide} style={heroSlideStyle}>
             {renderImageBannerLink(item, imageClassName)}
           </SwiperSlide>
         ))}
