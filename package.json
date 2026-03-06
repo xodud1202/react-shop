@@ -6,9 +6,14 @@
     "build": "next build",
     "lint": "eslint pages components hooks utils store types --ext .js,.jsx,.ts,.tsx",
     "dev": "cross-env PORT=3014 next dev --webpack",
-    "start": "cross-env PORT=3014 next start"
+    "start": "cross-env PORT=3014 next start",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.17.1",
     "next": "^16.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -24,6 +29,7 @@
     "eslint": "^9",
     "eslint-config-next": "^16.1.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.71.0"
   }
 }
