@@ -14,4 +14,7 @@ export interface ShopCategoryPageResponse {
   selectedCategoryNm: string;
   goodsList: ShopCategoryGoodsItem[];
   goodsCount: number;
+  pageNo: number;
+  pageSize: number;
+  totalPageCount: number;
 }
