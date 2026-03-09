@@ -28,18 +28,46 @@ function resolvePriceState(item: ShopGoodsCardItem) {
   };
 }
 
+// 카드에 표시할 기본/보조 이미지 상태를 계산합니다.
+function resolveImageState(item: ShopGoodsCardItem) {
+  // 기본 이미지와 보조 이미지 URL을 안전하게 정규화합니다.
+  const imgUrl = typeof item.imgUrl === "string" ? item.imgUrl.trim() : "";
+  const secondaryImgUrl = typeof item.secondaryImgUrl === "string" ? item.secondaryImgUrl.trim() : "";
+
+  return {
+    hasPrimaryImage: imgUrl.length > 0,
+    hasSecondaryImage: secondaryImgUrl.length > 0,
+    primaryImageUrl: imgUrl,
+    secondaryImageUrl: secondaryImgUrl,
+  };
+}
+
 // 공통 상품 카드 UI를 렌더링합니다.
 export default function ShopGoodsCard({ item }: ShopGoodsCardProps) {
   // 카드 썸네일 표시 여부와 가격 표시 상태를 계산합니다.
-  const hasImage = typeof item.imgUrl === "string" && item.imgUrl.trim().length > 0;
-  const imageUrl = hasImage ? item.imgUrl!.trim() : "";
+  const imageState = resolveImageState(item);
   const priceState = resolvePriceState(item);
 
   return (
-    <article className={styles.productCard}>
+    <article className={`${styles.productCard} ${imageState.hasSecondaryImage ? styles.productCardHoverable : ""}`}>
       <div className={styles.productThumbWrap}>
-        {hasImage ? (
-          <img className={styles.productThumb} src={imageUrl} alt={item.goodsNm ?? "상품 이미지"} loading="lazy" />
+        {imageState.hasPrimaryImage ? (
+          <div className={styles.productThumbInner}>
+            <img
+              className={`${styles.productThumb} ${styles.productThumbFront}`}
+              src={imageState.primaryImageUrl}
+              alt={item.goodsNm ?? "상품 이미지"}
+              loading="lazy"
+            />
+            {imageState.hasSecondaryImage ? (
+              <img
+                className={`${styles.productThumb} ${styles.productThumbBack}`}
+                src={imageState.secondaryImageUrl}
+                alt={item.goodsNm ?? "상품 이미지"}
+                loading="lazy"
+              />
+            ) : null}
+          </div>
         ) : (
           <div className={styles.productPlaceholder}>이미지 준비중</div>
         )}

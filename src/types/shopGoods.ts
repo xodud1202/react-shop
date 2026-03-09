@@ -7,4 +7,6 @@ export interface ShopGoodsCardItem {
   saleAmt: number;
   imgPath?: string | null;
   imgUrl?: string | null;
+  secondaryImgPath?: string | null;
+  secondaryImgUrl?: string | null;
 }
