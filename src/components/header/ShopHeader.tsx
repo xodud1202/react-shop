@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ShopHeaderBrand, ShopHeaderCategoryTree } from "@/types/shopHeader";
 import styles from "./ShopHeader.module.css";
 
@@ -15,8 +16,15 @@ interface ShopHeaderProps {
   initialBrands: ShopHeaderBrand[];
 }
 
+// 현재 경로를 기준으로 좌측 카테고리 영역 노출 여부를 반환합니다.
+function resolveShouldShowPrimaryMenus(pathname: string | null): boolean {
+  // 카테고리 화면과 추후 검색 화면에서만 좌측 카테고리 영역을 노출합니다.
+  return pathname === "/category" || pathname === "/search";
+}
+
 // 스타일24 레퍼런스 기반 1라인 헤더를 렌더링합니다.
 export default function ShopHeader({ initialCategoryTree, initialBrands }: ShopHeaderProps) {
+  const pathname = usePathname();
   const [categoryTree, setCategoryTree] = useState<ShopHeaderCategoryTree[]>(initialCategoryTree);
   const [brands, setBrands] = useState<ShopHeaderBrand[]>(initialBrands);
   const [isSearchLayerOpen, setIsSearchLayerOpen] = useState(false);
@@ -27,6 +35,7 @@ export default function ShopHeader({ initialCategoryTree, initialBrands }: ShopH
     initialCategoryTree[0]?.children[0]?.categoryId ?? null,
   );
   const searchLayerRef = useRef<HTMLDivElement | null>(null);
+  const shouldShowPrimaryMenus = resolveShouldShowPrimaryMenus(pathname);
 
   // SSR로 받은 헤더 데이터를 상태값으로 동기화합니다.
   useEffect(() => {
@@ -57,6 +66,16 @@ export default function ShopHeader({ initialCategoryTree, initialBrands }: ShopH
       document.removeEventListener("mousedown", handleDocumentMouseDown);
     };
   }, [isSearchLayerOpen]);
+
+  // 좌측 카테고리 영역이 숨겨지는 경로에서는 열린 레이어를 정리합니다.
+  useEffect(() => {
+    if (shouldShowPrimaryMenus) {
+      return;
+    }
+
+    setIsCategoryLayerOpen(false);
+    setIsBrandLayerOpen(false);
+  }, [shouldShowPrimaryMenus]);
 
   // 활성 1차 카테고리 객체를 계산합니다.
   const activeLevel1Category = useMemo(
@@ -139,103 +158,105 @@ export default function ShopHeader({ initialCategoryTree, initialBrands }: ShopH
               </Link>
             </div>
 
-            <div className={styles.centerMenus}>
-              <div className={styles.brandMenuGroup} onMouseEnter={handleOpenBrandLayer} onMouseLeave={handleCloseBrandLayer}>
-                <button type="button" className={styles.navButton} onClick={() => handlePlaceholderClick("브랜드")}>
-                  브랜드
-                </button>
+            {shouldShowPrimaryMenus && (
+              <div className={styles.centerMenus}>
+                <div className={styles.brandMenuGroup} onMouseEnter={handleOpenBrandLayer} onMouseLeave={handleCloseBrandLayer}>
+                  <button type="button" className={styles.navButton} onClick={() => handlePlaceholderClick("브랜드")}>
+                    브랜드
+                  </button>
 
-                {isBrandLayerOpen && (
-                  <div className={styles.layerPanel}>
-                    <div className={styles.brandLayerInner}>
-                      <h3 className={styles.layerTitle}>BRAND</h3>
-                      <ul className={styles.brandGrid}>
-                        {brands.map((brand) => (
-                          <li key={brand.brandNo}>
-                            <button
-                              type="button"
-                              className={styles.brandItem}
-                              onClick={() => handlePlaceholderClick(`${brand.brandNm} 브랜드관`)}
-                            >
-                              <div className={styles.brandLogoWrap}>
-                                {brand.brandLogoPath ? (
-                                  <Image
-                                    src={brand.brandLogoPath}
-                                    alt={`${brand.brandNm} 로고`}
-                                    width={62}
-                                    height={62}
-                                    className={styles.brandLogoImage}
-                                  />
-                                ) : (
-                                  <span className={styles.brandLogoFallback}>{brand.brandNm.slice(0, 1)}</span>
-                                )}
-                              </div>
-                              <span className={styles.brandName}>{brand.brandNm}</span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className={styles.categoryMenuGroup} onMouseLeave={handleCloseCategoryLayer}>
-                {categoryTree.map((level1Category) => (
-                  <Link
-                    key={level1Category.categoryId}
-                    href={buildCategoryHref(level1Category.categoryId)}
-                    className={styles.navButton}
-                    onMouseEnter={() => handleEnterLevel1Category(level1Category.categoryId)}
-                  >
-                    {level1Category.categoryNm}
-                  </Link>
-                ))}
-
-                {isCategoryLayerOpen && activeLevel1Category && (
-                  <div className={styles.categoryLayer}>
-                    <div className={styles.categoryLayerInner}>
-                      <div className={styles.level2Column}>
-                        <h3 className={styles.layerTitle}>{activeLevel1Category.categoryNm}</h3>
-                        <ul className={styles.level2List}>
-                          {activeLevel1Category.children.map((level2Category) => (
-                            <li key={level2Category.categoryId}>
-                              <Link
-                                href={buildCategoryHref(level2Category.categoryId)}
-                                className={
-                                  activeLevel2CategoryId === level2Category.categoryId
-                                    ? `${styles.level2Button} ${styles.level2ButtonActive}`
-                                    : styles.level2Button
-                                }
-                                onMouseEnter={() => setActiveLevel2CategoryId(level2Category.categoryId)}
+                  {isBrandLayerOpen && (
+                    <div className={styles.layerPanel}>
+                      <div className={styles.brandLayerInner}>
+                        <h3 className={styles.layerTitle}>BRAND</h3>
+                        <ul className={styles.brandGrid}>
+                          {brands.map((brand) => (
+                            <li key={brand.brandNo}>
+                              <button
+                                type="button"
+                                className={styles.brandItem}
+                                onClick={() => handlePlaceholderClick(`${brand.brandNm} 브랜드관`)}
                               >
-                                {level2Category.categoryNm}
-                              </Link>
+                                <div className={styles.brandLogoWrap}>
+                                  {brand.brandLogoPath ? (
+                                    <Image
+                                      src={brand.brandLogoPath}
+                                      alt={`${brand.brandNm} 로고`}
+                                      width={62}
+                                      height={62}
+                                      className={styles.brandLogoImage}
+                                    />
+                                  ) : (
+                                    <span className={styles.brandLogoFallback}>{brand.brandNm.slice(0, 1)}</span>
+                                  )}
+                                </div>
+                                <span className={styles.brandName}>{brand.brandNm}</span>
+                              </button>
                             </li>
                           ))}
                         </ul>
-                      </div>
-
-                      <div className={styles.level3Column}>
-                        <h3 className={styles.layerTitle}>하위 카테고리</h3>
-                        <ul className={styles.level3List}>
-                          {(activeLevel2Category?.children ?? []).map((level3Category) => (
-                            <li key={level3Category.categoryId}>
-                              <Link href={buildCategoryHref(level3Category.categoryId)} className={styles.level3Button}>
-                                {level3Category.categoryNm}
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                        {(activeLevel2Category?.children ?? []).length === 0 && (
-                          <p className={styles.emptyText}>등록된 하위 카테고리가 없습니다.</p>
-                        )}
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+
+                <div className={styles.categoryMenuGroup} onMouseLeave={handleCloseCategoryLayer}>
+                  {categoryTree.map((level1Category) => (
+                    <Link
+                      key={level1Category.categoryId}
+                      href={buildCategoryHref(level1Category.categoryId)}
+                      className={styles.navButton}
+                      onMouseEnter={() => handleEnterLevel1Category(level1Category.categoryId)}
+                    >
+                      {level1Category.categoryNm}
+                    </Link>
+                  ))}
+
+                  {isCategoryLayerOpen && activeLevel1Category && (
+                    <div className={styles.categoryLayer}>
+                      <div className={styles.categoryLayerInner}>
+                        <div className={styles.level2Column}>
+                          <h3 className={styles.layerTitle}>{activeLevel1Category.categoryNm}</h3>
+                          <ul className={styles.level2List}>
+                            {activeLevel1Category.children.map((level2Category) => (
+                              <li key={level2Category.categoryId}>
+                                <Link
+                                  href={buildCategoryHref(level2Category.categoryId)}
+                                  className={
+                                    activeLevel2CategoryId === level2Category.categoryId
+                                      ? `${styles.level2Button} ${styles.level2ButtonActive}`
+                                      : styles.level2Button
+                                  }
+                                  onMouseEnter={() => setActiveLevel2CategoryId(level2Category.categoryId)}
+                                >
+                                  {level2Category.categoryNm}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div className={styles.level3Column}>
+                          <h3 className={styles.layerTitle}>하위 카테고리</h3>
+                          <ul className={styles.level3List}>
+                            {(activeLevel2Category?.children ?? []).map((level3Category) => (
+                              <li key={level3Category.categoryId}>
+                                <Link href={buildCategoryHref(level3Category.categoryId)} className={styles.level3Button}>
+                                  {level3Category.categoryNm}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                          {(activeLevel2Category?.children ?? []).length === 0 && (
+                            <p className={styles.emptyText}>등록된 하위 카테고리가 없습니다.</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className={styles.rightActions}>
               <div className={styles.searchLayerWrap} ref={searchLayerRef}>

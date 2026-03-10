@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import ShopHeader from "@/components/header/ShopHeader";
+import ShopFooter from "@/components/footer/ShopFooter";
 import { fetchShopHeaderServerData } from "@/lib/server/shopHeaderServerApi";
 import "./globals.css";
 import "swiper/css";
@@ -26,6 +27,7 @@ export default async function RootLayout({
       <body className="antialiased">
         <ShopHeader initialCategoryTree={headerData.categories} initialBrands={headerData.brands} />
         <main>{children}</main>
+        <ShopFooter />
         <Script
           src="https://kit.fontawesome.com/ffb719f976.js"
           crossOrigin="anonymous"
