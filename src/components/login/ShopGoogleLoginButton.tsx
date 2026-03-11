@@ -134,7 +134,7 @@ export default function ShopGoogleLoginButton({ clientId, onGoogleProfile }: Sho
 
     // 정상 상태에서는 안내 문구를 기본값으로 복원합니다.
     setIsError(false);
-    setMessage("구글 로그인 후 브라우저 콘솔에서 사용자 데이터를 확인할 수 있습니다.");
+    setMessage("");
 
     // 구글 credential 응답을 콘솔에 출력합니다.
     const handleCredentialResponse = (response: GoogleCredentialResponse) => {
