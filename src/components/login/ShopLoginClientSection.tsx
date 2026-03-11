@@ -17,6 +17,8 @@ export default function ShopLoginClientSection({ googleClientId }: ShopLoginClie
   const [googleProfile, setGoogleProfile] = useState<ShopGoogleProfile | null>(null);
   const [recommendedLoginId, setRecommendedLoginId] = useState("");
   const [message, setMessage] = useState("");
+  // 추가 정보 입력 폼 노출 여부를 계산합니다.
+  const isAdditionalInfoFormVisible = googleProfile !== null && recommendedLoginId.trim() !== "";
 
   // 구글 로그인 성공 후 기존 회원 여부를 판정합니다.
   const handleGoogleProfile = async (profile: ShopGoogleProfile) => {
@@ -66,9 +68,9 @@ export default function ShopLoginClientSection({ googleClientId }: ShopLoginClie
 
   return (
     <>
-      <ShopGoogleLoginButton clientId={googleClientId} onGoogleProfile={handleGoogleProfile} />
+      {!isAdditionalInfoFormVisible ? <ShopGoogleLoginButton clientId={googleClientId} onGoogleProfile={handleGoogleProfile} /> : null}
       {message !== "" ? <p className={styles.statusMessage}>{message}</p> : null}
-      {googleProfile && recommendedLoginId !== "" ? (
+      {isAdditionalInfoFormVisible && googleProfile ? (
         <ShopAdditionalInfoForm profile={googleProfile} recommendedLoginId={recommendedLoginId} />
       ) : null}
     </>

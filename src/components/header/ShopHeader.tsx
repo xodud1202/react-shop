@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import type { ShopHeaderBrand, ShopHeaderCategoryTree } from "@/types/shopHeader";
 import styles from "./ShopHeader.module.css";
 
@@ -17,15 +16,14 @@ interface ShopHeaderProps {
   isLoggedIn: boolean;
 }
 
-// 현재 경로를 기준으로 좌측 카테고리 영역 노출 여부를 반환합니다.
-function resolveShouldShowPrimaryMenus(pathname: string | null): boolean {
-  // 카테고리 화면과 추후 검색 화면에서만 좌측 카테고리 영역을 노출합니다.
-  return pathname === "/category" || pathname === "/search";
+// 가운데 메뉴(브랜드/카테고리) 상시 노출 여부를 반환합니다.
+function resolveShouldShowPrimaryMenus(): boolean {
+  // 사용자 요구사항에 따라 모든 경로에서 가운데 메뉴를 노출합니다.
+  return true;
 }
 
 // 스타일24 레퍼런스 기반 1라인 헤더를 렌더링합니다.
 export default function ShopHeader({ initialCategoryTree, initialBrands, isLoggedIn }: ShopHeaderProps) {
-  const pathname = usePathname();
   const [categoryTree, setCategoryTree] = useState<ShopHeaderCategoryTree[]>(initialCategoryTree);
   const [brands, setBrands] = useState<ShopHeaderBrand[]>(initialBrands);
   const [isSearchLayerOpen, setIsSearchLayerOpen] = useState(false);
@@ -36,7 +34,7 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
     initialCategoryTree[0]?.children[0]?.categoryId ?? null,
   );
   const searchLayerRef = useRef<HTMLDivElement | null>(null);
-  const shouldShowPrimaryMenus = resolveShouldShowPrimaryMenus(pathname);
+  const shouldShowPrimaryMenus = resolveShouldShowPrimaryMenus();
 
   // SSR로 받은 헤더 데이터를 상태값으로 동기화합니다.
   useEffect(() => {
@@ -67,16 +65,6 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
       document.removeEventListener("mousedown", handleDocumentMouseDown);
     };
   }, [isSearchLayerOpen]);
-
-  // 좌측 카테고리 영역이 숨겨지는 경로에서는 열린 레이어를 정리합니다.
-  useEffect(() => {
-    if (shouldShowPrimaryMenus) {
-      return;
-    }
-
-    setIsCategoryLayerOpen(false);
-    setIsBrandLayerOpen(false);
-  }, [shouldShowPrimaryMenus]);
 
   // 활성 1차 카테고리 객체를 계산합니다.
   const activeLevel1Category = useMemo(
@@ -155,7 +143,7 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
           <div className={styles.headerRow}>
             <div className={styles.logoWrap}>
               <Link href="/" aria-label="메인으로 이동">
-                <Image src={DEFAULT_LOGO_URL} alt="xodud1202 로고" width={160} height={38} priority />
+                <Image src={DEFAULT_LOGO_URL} alt="xodud1202 로고" width={160} height={38} style={{ height: "auto" }} priority />
               </Link>
             </div>
 
@@ -319,7 +307,7 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
       <div className={styles.mobileHeader}>
         <div className={styles.mobileHeaderRow}>
           <Link href="/" aria-label="메인으로 이동">
-            <Image src={DEFAULT_LOGO_URL} alt="xodud1202 로고" width={130} height={30} />
+            <Image src={DEFAULT_LOGO_URL} alt="xodud1202 로고" width={130} height={30} style={{ height: "auto" }} />
           </Link>
           <button type="button" className={styles.iconButton} onClick={handleToggleSearchLayer} aria-label="검색 열기">
             <i className="fa-solid fa-magnifying-glass" />

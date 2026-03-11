@@ -123,7 +123,7 @@ export default function ShopGoogleLoginButton({ clientId, onGoogleProfile }: Sho
     // 필수 설정값이 없으면 버튼 대신 안내 문구를 노출합니다.
     if (clientId.trim() === "") {
       setIsError(true);
-      setMessage("NEXT_PUBLIC_GOOGLE_CLIENT_ID 값을 .env에 추가해주세요.");
+      setMessage("GOOGLE_CLIENT_ID 값을 추가해주세요.");
       return;
     }
 
