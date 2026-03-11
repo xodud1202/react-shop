@@ -1,0 +1,163 @@
+.formSection {
+  margin-top: 28px;
+  padding-top: 28px;
+  border-top: 1px dashed #d1d5db;
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+  font-size: 22px;
+  line-height: 1.35;
+  font-weight: 800;
+  color: #111111;
+  letter-spacing: -0.02em;
+}
+
+.sectionDesc {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #4b5563;
+}
+
+.formGrid {
+  display: grid;
+  gap: 18px;
+}
+
+.fieldBlock {
+  display: grid;
+  gap: 8px;
+}
+
+.fieldLabel {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111111;
+}
+
+.optionalLabel {
+  margin-left: 6px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.textInput,
+.dateInput {
+  width: 100%;
+  height: 48px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  padding: 0 14px;
+  font-size: 15px;
+  color: #111111;
+}
+
+.disabledInput {
+  background: #f8fafc;
+  color: #6b7280;
+}
+
+.helperText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #6b7280;
+}
+
+.radioGroup {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.radioLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #111111;
+}
+
+.consentCard {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.consentTitle {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111111;
+}
+
+.checkboxColumn {
+  display: grid;
+  gap: 12px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  color: #111111;
+}
+
+.checkboxLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.viewButton {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  min-width: 56px;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: #111111;
+  cursor: pointer;
+}
+
+.submitButton {
+  width: 100%;
+  height: 54px;
+  border: none;
+  background: #111111;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.submitButton:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.noticeText {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #dc2626;
+}
+
+@media (max-width: 768px) {
+  .sectionTitle {
+    font-size: 20px;
+  }
+
+  .checkboxLabel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .viewButton {
+    align-self: flex-start;
+  }
+}

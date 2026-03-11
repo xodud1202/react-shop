@@ -1,0 +1,28 @@
+.buttonSection {
+  width: 100%;
+}
+
+.buttonWrap {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+}
+
+.buttonContainer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.messageText {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
+  text-align: center;
+}
+
+.errorText {
+  color: #dc2626;
+}
