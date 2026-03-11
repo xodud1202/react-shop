@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Script from "next/script";
 import ShopHeader from "@/components/header/ShopHeader";
 import ShopFooter from "@/components/footer/ShopFooter";
+import ShopSessionKeeper from "@/components/login/ShopSessionKeeper";
 import { fetchShopHeaderServerData } from "@/lib/server/shopHeaderServerApi";
 import "./globals.css";
 import "swiper/css";
@@ -20,12 +22,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // 헤더 공통 데이터(카테고리/브랜드)를 SSR로 조회합니다.
+  const cookieStore = await cookies();
   const headerData = await fetchShopHeaderServerData();
+  const isLoggedIn = (cookieStore.get("cust_no")?.value ?? "").trim() !== "";
 
   return (
     <html lang="ko">
       <body className="antialiased">
-        <ShopHeader initialCategoryTree={headerData.categories} initialBrands={headerData.brands} />
+        <ShopSessionKeeper />
+        <ShopHeader initialCategoryTree={headerData.categories} initialBrands={headerData.brands} isLoggedIn={isLoggedIn} />
         <main>{children}</main>
         <ShopFooter />
         <Script

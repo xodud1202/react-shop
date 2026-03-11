@@ -14,6 +14,7 @@ const DEFAULT_LOGO_URL =
 interface ShopHeaderProps {
   initialCategoryTree: ShopHeaderCategoryTree[];
   initialBrands: ShopHeaderBrand[];
+  isLoggedIn: boolean;
 }
 
 // 현재 경로를 기준으로 좌측 카테고리 영역 노출 여부를 반환합니다.
@@ -23,7 +24,7 @@ function resolveShouldShowPrimaryMenus(pathname: string | null): boolean {
 }
 
 // 스타일24 레퍼런스 기반 1라인 헤더를 렌더링합니다.
-export default function ShopHeader({ initialCategoryTree, initialBrands }: ShopHeaderProps) {
+export default function ShopHeader({ initialCategoryTree, initialBrands, isLoggedIn }: ShopHeaderProps) {
   const pathname = usePathname();
   const [categoryTree, setCategoryTree] = useState<ShopHeaderCategoryTree[]>(initialCategoryTree);
   const [brands, setBrands] = useState<ShopHeaderBrand[]>(initialBrands);
@@ -287,14 +288,20 @@ export default function ShopHeader({ initialCategoryTree, initialBrands }: ShopH
                 )}
               </div>
 
-              <button
-                type="button"
-                className={styles.iconButton}
-                onClick={() => handlePlaceholderClick("로그인")}
-                aria-label="로그인"
-              >
-                <i className="fa-regular fa-user" />
-              </button>
+              {isLoggedIn ? (
+                <button
+                  type="button"
+                  className={styles.iconButton}
+                  onClick={() => handlePlaceholderClick("마이페이지")}
+                  aria-label="마이페이지"
+                >
+                  <i className="fa-regular fa-user" />
+                </button>
+              ) : (
+                <Link className={styles.iconButton} href="/login/form" aria-label="로그인">
+                  <i className="fa-solid fa-right-to-bracket" />
+                </Link>
+              )}
               <button
                 type="button"
                 className={styles.iconButton}
