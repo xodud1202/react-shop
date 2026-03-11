@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ShopAdditionalInfoForm from "@/components/login/ShopAdditionalInfoForm";
 import ShopGoogleLoginButton from "@/components/login/ShopGoogleLoginButton";
+import { emitShopAuthChangeEvent } from "@/lib/auth/shopAuthEvent";
 import type { ShopGoogleLoginApiResponse, ShopGoogleProfile } from "@/types/shopAuth";
 import styles from "./ShopLoginClientSection.module.css";
 
@@ -50,6 +51,11 @@ export default function ShopLoginClientSection({ googleClientId }: ShopLoginClie
 
       // 기존 회원이면 홈으로 이동합니다.
       if (payload.loginSuccess) {
+        // 로그인 성공 상태를 헤더에 즉시 반영합니다.
+        emitShopAuthChangeEvent({
+          isLoggedIn: true,
+          custNo: payload.custNo ? String(payload.custNo) : "",
+        });
         router.replace("/");
         router.refresh();
         return;

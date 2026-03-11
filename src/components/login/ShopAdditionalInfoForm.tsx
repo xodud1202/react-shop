@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { emitShopAuthChangeEvent } from "@/lib/auth/shopAuthEvent";
 import { PRIVATE_POLICY_PARAGRAPHS, TERMS_PARAGRAPHS } from "@/lib/constants/policyDocuments";
 import type { ShopGoogleJoinApiRequest, ShopGoogleJoinApiResponse, ShopGoogleJoinDeviceType, ShopGoogleProfile } from "@/types/shopAuth";
 import ShopAgreementModal from "./ShopAgreementModal";
@@ -224,6 +225,11 @@ export default function ShopAdditionalInfoForm({ profile, recommendedLoginId }: 
 
       // 회원가입 후 로그인 성공이면 홈 화면으로 이동합니다.
       if (payload.loginSuccess) {
+        // 로그인 성공 상태를 헤더에 즉시 반영합니다.
+        emitShopAuthChangeEvent({
+          isLoggedIn: true,
+          custNo: payload.custNo ? String(payload.custNo) : "",
+        });
         router.replace("/");
         router.refresh();
         return;

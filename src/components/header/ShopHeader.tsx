@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { subscribeShopAuthChangeEvent } from "@/lib/auth/shopAuthEvent";
 import type { ShopHeaderBrand, ShopHeaderCategoryTree } from "@/types/shopHeader";
 import styles from "./ShopHeader.module.css";
 
@@ -26,6 +27,7 @@ function resolveShouldShowPrimaryMenus(): boolean {
 export default function ShopHeader({ initialCategoryTree, initialBrands, isLoggedIn }: ShopHeaderProps) {
   const [categoryTree, setCategoryTree] = useState<ShopHeaderCategoryTree[]>(initialCategoryTree);
   const [brands, setBrands] = useState<ShopHeaderBrand[]>(initialBrands);
+  const [isLoggedInState, setIsLoggedInState] = useState<boolean>(isLoggedIn);
   const [isSearchLayerOpen, setIsSearchLayerOpen] = useState(false);
   const [isCategoryLayerOpen, setIsCategoryLayerOpen] = useState(false);
   const [isBrandLayerOpen, setIsBrandLayerOpen] = useState(false);
@@ -43,6 +45,18 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
     setActiveLevel1CategoryId(initialCategoryTree[0]?.categoryId ?? null);
     setActiveLevel2CategoryId(initialCategoryTree[0]?.children[0]?.categoryId ?? null);
   }, [initialCategoryTree, initialBrands]);
+
+  // SSR 로그인 상태가 갱신되면 클라이언트 로그인 상태도 동기화합니다.
+  useEffect(() => {
+    setIsLoggedInState(isLoggedIn);
+  }, [isLoggedIn]);
+
+  // 로그인/로그아웃 이벤트를 구독해 헤더 아이콘 상태를 즉시 갱신합니다.
+  useEffect(() => {
+    return subscribeShopAuthChangeEvent((detail) => {
+      setIsLoggedInState(detail.isLoggedIn);
+    });
+  }, []);
 
   // 검색 레이어 바깥 클릭 시 레이어를 닫습니다.
   useEffect(() => {
@@ -276,7 +290,7 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
                 )}
               </div>
 
-              {isLoggedIn ? (
+              {isLoggedInState ? (
                 <button
                   type="button"
                   className={styles.iconButton}
