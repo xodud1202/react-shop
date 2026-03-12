@@ -1,0 +1,203 @@
+.exhibitionPage {
+  width: 100%;
+  min-height: calc(100vh - 120px);
+  background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+}
+
+.exhibitionContainer {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 20px 16px 64px;
+}
+
+.exhibitionSection {
+  min-width: 0;
+}
+
+.exhibitionHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.exhibitionTitle {
+  margin: 0;
+  font-size: 36px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #111111;
+}
+
+.exhibitionCount {
+  margin: 0;
+  font-size: 18px;
+  color: #ff5a1f;
+  font-weight: 600;
+}
+
+.exhibitionGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.exhibitionCard {
+  min-width: 0;
+}
+
+.thumbnailWrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 750 / 1024;
+  border: 1px solid #ececec;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.thumbnailImage {
+  object-fit: cover;
+}
+
+.thumbnailPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 13px;
+  background: #f3f4f6;
+}
+
+.thumbnailName {
+  margin: 10px 0 0;
+  font-size: 15px;
+  color: #111111;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.emptyState {
+  margin-top: 10px;
+  padding: 48px 16px;
+  border: 1px solid #ececec;
+  text-align: center;
+  font-size: 15px;
+  color: #6b7280;
+}
+
+.paginationWrap {
+  margin-top: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.paginationArrow,
+.paginationNumber,
+.paginationEllipsis {
+  min-width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #374151;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.paginationArrow,
+.paginationNumber {
+  border: 1px solid #e5e7eb;
+}
+
+.paginationEllipsis {
+  font-weight: 600;
+}
+
+.paginationArrow:hover,
+.paginationNumber:hover,
+.paginationEllipsis:hover {
+  color: #111111;
+  border-color: #d1d5db;
+}
+
+.paginationCurrent {
+  border-color: #111111;
+  color: #111111;
+  font-weight: 700;
+}
+
+.paginationDisabled {
+  color: #9ca3af;
+  border-color: #e5e7eb;
+  background: #f9fafb;
+  pointer-events: none;
+}
+
+@media (max-width: 1200px) {
+  .exhibitionTitle {
+    font-size: 30px;
+  }
+
+  .exhibitionCount {
+    font-size: 16px;
+  }
+
+  .exhibitionGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+  }
+}
+
+@media (max-width: 900px) {
+  .exhibitionContainer {
+    padding: 16px 12px 40px;
+  }
+
+  .exhibitionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .exhibitionTitle {
+    font-size: 24px;
+  }
+
+  .exhibitionCount {
+    font-size: 15px;
+  }
+
+  .exhibitionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .thumbnailName {
+    font-size: 14px;
+  }
+
+  .paginationWrap {
+    gap: 6px;
+    justify-content: flex-start;
+  }
+
+  .paginationArrow,
+  .paginationNumber,
+  .paginationEllipsis {
+    min-width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+}
+

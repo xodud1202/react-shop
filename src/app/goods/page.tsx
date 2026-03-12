@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import ShopGoodsDetailTop from "@/domains/goods/components/ShopGoodsDetailTop";
 import { fetchShopGoodsDetailServerData } from "@/domains/goods/api/goodsServerApi";
+import { buildForwardCookieHeader } from "@/shared/server/shopCookieHeader";
 
 interface GoodsPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -14,27 +15,6 @@ function resolveGoodsId(rawGoodsId: string | string[] | undefined): string {
   return typeof rawGoodsId === "string" ? rawGoodsId : "";
 }
 
-// 쿠키 헤더에 안전하게 포함될 수 있도록 값을 정리합니다.
-function sanitizeCookieValue(value: string): string {
-  return value.replace(/[\r\n;]/g, "");
-}
-
-// 서버 요청 쿠키를 백엔드 전달용 Cookie 헤더 문자열로 변환합니다.
-function buildCookieHeader(cookieStore: Awaited<ReturnType<typeof cookies>>): string {
-  // 상품상세 SSR 조회에 실제로 필요한 로그인 쿠키만 전달합니다.
-  const forwardCookieNameList = ["cust_no", "cust_grade_cd"] as const;
-  const cookieTokenList = forwardCookieNameList
-    .map((cookieName) => {
-      const cookieValue = cookieStore.get(cookieName)?.value ?? "";
-      if (cookieValue.trim() === "") {
-        return "";
-      }
-      return `${cookieName}=${sanitizeCookieValue(cookieValue)}`;
-    })
-    .filter((cookieToken) => cookieToken !== "");
-  return cookieTokenList.join("; ");
-}
-
 // 쇼핑몰 상품상세 화면을 렌더링합니다.
 export default async function GoodsPage({ searchParams }: GoodsPageProps) {
   // URL 쿼리에서 goodsId를 추출합니다.
@@ -43,7 +23,7 @@ export default async function GoodsPage({ searchParams }: GoodsPageProps) {
 
   // 현재 요청 쿠키를 백엔드 SSR 호출 헤더로 전달합니다.
   const cookieStore = await cookies();
-  const cookieHeader = buildCookieHeader(cookieStore);
+  const cookieHeader = buildForwardCookieHeader(cookieStore, ["cust_no", "cust_grade_cd"]);
   const goodsDetailData = await fetchShopGoodsDetailServerData(goodsId, cookieHeader);
 
   return <ShopGoodsDetailTop detailData={goodsDetailData} requestedGoodsId={goodsId} />;

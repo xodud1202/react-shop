@@ -17,6 +17,7 @@ interface ShopGoodsDetailTopProps {
 }
 
 const GOODS_DETAIL_COLLAPSE_HEIGHT = 500;
+const GOODS_DETAIL_FALLBACK_TEXT_LENGTH = 50;
 
 // 상품상세 공유 URL을 생성합니다.
 function buildGoodsDetailShareUrl(goodsId: string): string {
@@ -135,6 +136,31 @@ function resolveVisibleDetailHtml(detailData: ShopGoodsDetailResponse | null, is
   return pcDetailHtml !== "" ? pcDetailHtml : mobileDetailHtml;
 }
 
+// HTML을 제거한 상품상세 텍스트를 길이 계산용으로 정규화합니다.
+function resolveNormalizedDetailText(detailHtml: string): string {
+  // 태그/엔티티/공백을 제거해 실질 텍스트 길이만 계산되도록 정리합니다.
+  return detailHtml
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&[a-zA-Z0-9#]+;/g, " ")
+    .replace(/\s+/g, "")
+    .trim();
+}
+
+// 상품상세 대신 이미지 리스트를 노출할지 여부를 계산합니다.
+function shouldRenderDetailImageFallback(detailHtml: string): boolean {
+  // 상품상세 HTML 자체가 없으면 이미지 리스트를 기본 노출합니다.
+  if (detailHtml.trim() === "") {
+    return true;
+  }
+
+  // HTML 제거 후 50자 이하인 경우 상세 설명이 부족한 것으로 간주합니다.
+  const normalizedDetailText = resolveNormalizedDetailText(detailHtml);
+  return normalizedDetailText.length <= GOODS_DETAIL_FALLBACK_TEXT_LENGTH;
+}
+
 // 상품상세 상단 UI를 렌더링합니다.
 export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: ShopGoodsDetailTopProps) {
   const router = useRouter();
@@ -181,6 +207,11 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
   const visibleDetailHtml = useMemo(
     () => resolveVisibleDetailHtml(detailData, isMobileViewport),
     [detailData, isMobileViewport],
+  );
+  // 상세 설명이 비어 있거나 너무 짧으면 상품 이미지 리스트를 대신 노출합니다.
+  const shouldRenderDetailImageList = useMemo(
+    () => shouldRenderDetailImageFallback(visibleDetailHtml),
+    [visibleDetailHtml],
   );
   const brandLogoPath = (detailData?.goods?.brandLogoPath ?? "").trim();
   const brandNotiHtml = useMemo(
@@ -297,9 +328,9 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
       : [];
 
     const measureDetailOverflow = (): void => {
-      // 스크롤 높이를 기준으로 접힘 버튼 필요 여부를 계산합니다.
+      // 상세 HTML/이미지 fallback 영역의 스크롤 높이로 접힘 버튼 필요 여부를 계산합니다.
       const currentDetailElement = detailContentRef.current;
-      const detailHeight = visibleDetailHtml === "" ? 0 : (currentDetailElement?.scrollHeight ?? 0);
+      const detailHeight = currentDetailElement?.scrollHeight ?? 0;
       setIsDetailOverflowed(detailHeight > GOODS_DETAIL_COLLAPSE_HEIGHT);
     };
 
@@ -331,7 +362,7 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
         imageElement.removeEventListener("error", scheduleDetailOverflowMeasure);
       });
     };
-  }, [visibleDetailHtml, currentGoodsId]);
+  }, [visibleDetailHtml, currentGoodsId, shouldRenderDetailImageList, orderedImageList]);
 
   // 상세 데이터가 없으면 안내 메시지를 렌더링합니다.
   if (!detailData || !detailData.goods) {
@@ -744,7 +775,45 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
           </section>
         ) : null}
 
-        {visibleDetailHtml !== "" ? (
+        {shouldRenderDetailImageList ? (
+          <section className={styles.detailSection}>
+            <div className={styles.detailContentWrap}>
+              <div
+                ref={detailContentRef}
+                className={`${styles.detailImageContent} ${showDetailExpandButton ? styles.detailContentCollapsed : ""}`}
+              >
+                {orderedImageList.length > 0 ? (
+                  <ul className={styles.detailImageList}>
+                    {orderedImageList.map((imageItem) => (
+                      <li key={`detail-${imageItem.goodsId}-${imageItem.imgNo}`} className={styles.detailImageListItem}>
+                        <div className={styles.detailImageItemWrap}>
+                          {/* 상세 fallback 이미지는 원본 비율/해상도를 우선 유지해 노출합니다. */}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imageItem.imgUrl || imageItem.imgPath}
+                            alt={detailData.goods.goodsNm || "상품 상세 이미지"}
+                            className={styles.detailImageItem}
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className={styles.detailImageEmptyText}>상품 상세 이미지가 없습니다.</p>
+                )}
+              </div>
+              {showDetailExpandButton ? <div className={styles.detailFadeOut} aria-hidden="true" /> : null}
+            </div>
+
+            {showDetailExpandButton ? (
+              <button type="button" className={styles.detailExpandButton} onClick={handleDetailExpandButtonClick}>
+                전체 보기
+              </button>
+            ) : null}
+          </section>
+        ) : visibleDetailHtml !== "" ? (
           <section className={styles.detailSection}>
             <div className={styles.detailContentWrap}>
               <div

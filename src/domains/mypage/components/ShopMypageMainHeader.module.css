@@ -1,0 +1,18 @@
+.mainHeader {
+  width: 100%;
+}
+
+.mainTitle {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+  color: #111111;
+}
+
+@media (max-width: 1024px) {
+  .mainTitle {
+    font-size: 22px;
+  }
+}

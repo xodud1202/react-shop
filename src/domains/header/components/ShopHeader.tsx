@@ -137,6 +137,13 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
     setIsBrandLayerOpen(false);
   };
 
+  // 기획전 메뉴 진입 시 열려있는 레이어를 닫습니다.
+  const handleEnterExhibitionMenu = () => {
+    setIsCategoryLayerOpen(false);
+    setIsBrandLayerOpen(false);
+    setIsSearchLayerOpen(false);
+  };
+
   // 임시 메뉴 클릭 동작을 처리합니다.
   const handlePlaceholderClick = (menuName: string) => {
     window.alert(`${menuName} 기능은 준비중입니다.`);
@@ -240,6 +247,13 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
                     </Link>
                   ))}
 
+                  <span className={styles.menuDivider} aria-hidden="true">
+                    |
+                  </span>
+                  <Link href="/exhibition/list" className={styles.navButton} onMouseEnter={handleEnterExhibitionMenu}>
+                    기획전
+                  </Link>
+
                   {isCategoryLayerOpen && activeLevel1Category && (
                     <div className={styles.categoryLayer}>
                       <div className={styles.categoryLayerInner}>
@@ -315,25 +329,22 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
                 )}
               </div>
 
-              <button
-                type="button"
-                className={styles.iconButton}
-                onClick={() => handlePlaceholderClick("장바구니")}
-                aria-label="장바구니"
-              >
-                <i className="fa-solid fa-bag-shopping" />
-              </button>
-
               {isLoggedInState ? (
                 <>
+                  <Link className={styles.iconButton} href="/mypage/wish" aria-label="찜">
+                    <i className="fa-regular fa-heart" />
+                  </Link>
                   <button
                     type="button"
                     className={styles.iconButton}
-                    onClick={() => handlePlaceholderClick("마이페이지")}
-                    aria-label="마이페이지"
+                    onClick={() => handlePlaceholderClick("장바구니")}
+                    aria-label="장바구니"
                   >
-                    <i className="fa-regular fa-user" />
+                    <i className="fa-solid fa-bag-shopping" />
                   </button>
+                  <Link className={styles.iconButton} href="/mypage/main" aria-label="마이페이지">
+                    <i className="fa-regular fa-user" />
+                  </Link>
                   <button
                     type="button"
                     className={styles.iconButton}
