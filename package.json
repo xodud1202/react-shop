@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "lint": "eslint pages components hooks utils store types --ext .js,.jsx,.ts,.tsx",
+    "lint": "eslint src --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
     "dev": "cross-env PORT=3014 next dev --webpack",
     "start": "cross-env PORT=3014 next start"
   },

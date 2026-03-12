@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Script from "next/script";
-import ShopHeader from "@/components/header/ShopHeader";
-import ShopFooter from "@/components/footer/ShopFooter";
-import ShopSessionKeeper from "@/components/login/ShopSessionKeeper";
-import { fetchShopHeaderServerData } from "@/lib/server/shopHeaderServerApi";
+import ShopHeader from "@/domains/header/components/ShopHeader";
+import ShopFooter from "@/domains/footer/components/ShopFooter";
+import ShopSessionKeeper from "@/domains/login/components/ShopSessionKeeper";
+import { fetchShopHeaderServerData } from "@/domains/header/api/headerServerApi";
 import "./globals.css";
 import "swiper/css";
 import "swiper/css/navigation";
@@ -42,3 +42,4 @@ export default async function RootLayout({
     </html>
   );
 }
+

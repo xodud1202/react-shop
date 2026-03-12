@@ -1,10 +1,10 @@
-import MainBandBanner from "@/components/main/MainBandBanner";
-import MainGoodsListBanner from "@/components/main/MainGoodsListBanner";
-import MainGoodsTabBanner from "@/components/main/MainGoodsTabBanner";
-import MainHeroBanner from "@/components/main/MainHeroBanner";
-import styles from "@/components/main/ShopMain.module.css";
-import { fetchShopMainServerData } from "@/lib/server/shopMainServerApi";
-import type { ShopMainSection } from "@/types/shopMain";
+import MainBandBanner from "@/domains/main/components/MainBandBanner";
+import MainGoodsListBanner from "@/domains/main/components/MainGoodsListBanner";
+import MainGoodsTabBanner from "@/domains/main/components/MainGoodsTabBanner";
+import MainHeroBanner from "@/domains/main/components/MainHeroBanner";
+import styles from "@/domains/main/components/ShopMain.module.css";
+import { fetchShopMainServerData } from "@/domains/main/api/mainServerApi";
+import type { ShopMainSection } from "@/domains/main/types";
 
 // 메인 섹션 목록을 노출 순서 기준으로 정렬합니다.
 function resolveOrderedSectionList(sectionList: ShopMainSection[]): ShopMainSection[] {
@@ -52,3 +52,4 @@ export default async function Home() {
     </section>
   );
 }
+

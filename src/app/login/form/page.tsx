@@ -1,5 +1,5 @@
-import ShopLoginClientSection from "@/components/login/ShopLoginClientSection";
-import { fetchShopSiteServerData } from "@/lib/server/shopSiteServerApi";
+import ShopLoginClientSection from "@/domains/login/components/ShopLoginClientSection";
+import { fetchShopSiteServerData } from "@/domains/site/api/siteServerApi";
 import styles from "./page.module.css";
 
 // 로그인 페이지를 렌더링합니다.
@@ -20,3 +20,4 @@ export default async function LoginFormPage() {
     </section>
   );
 }
+

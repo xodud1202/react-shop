@@ -1,7 +1,7 @@
-import ShopCategoryGoodsSection from "@/components/category/ShopCategoryGoodsSection";
-import ShopCategorySidebar from "@/components/category/ShopCategorySidebar";
-import styles from "@/components/category/ShopCategory.module.css";
-import { fetchShopCategoryPageServerData } from "@/lib/server/shopCategoryServerApi";
+import ShopCategoryGoodsSection from "@/domains/category/components/ShopCategoryGoodsSection";
+import ShopCategorySidebar from "@/domains/category/components/ShopCategorySidebar";
+import styles from "@/domains/category/components/ShopCategory.module.css";
+import { fetchShopCategoryPageServerData } from "@/domains/category/api/categoryServerApi";
 
 interface CategoryPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -41,6 +41,7 @@ export default async function CategoryPage({ searchParams }: CategoryPageProps) 
       <div className={styles.categoryContainer}>
         <div className={styles.categoryContent}>
           <ShopCategorySidebar
+            key={`${categoryPageData.selectedCategoryId}-${categoryPageData.categoryTree.length}`}
             categoryTree={categoryPageData.categoryTree}
             selectedCategoryId={categoryPageData.selectedCategoryId}
           />
