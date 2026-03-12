@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import type { ShopGoodsCardItem } from "@/shared/types/shopGoods";
 import styles from "./ShopGoodsCard.module.css";
 
@@ -43,6 +44,12 @@ function resolveImageState(item: ShopGoodsCardItem) {
   };
 }
 
+// 상품상세 화면 이동 링크를 생성합니다.
+function buildGoodsDetailHref(goodsId: string): string {
+  // 상품코드를 URL 인코딩해 쿼리스트링으로 반환합니다.
+  return `/goods?goodsId=${encodeURIComponent(goodsId)}`;
+}
+
 // 공통 상품 카드 UI를 렌더링합니다.
 export default function ShopGoodsCard({ item }: ShopGoodsCardProps) {
   // 카드 썸네일 표시 여부와 가격 표시 상태를 계산합니다.
@@ -51,44 +58,46 @@ export default function ShopGoodsCard({ item }: ShopGoodsCardProps) {
 
   return (
     <article className={`${styles.productCard} ${imageState.hasSecondaryImage ? styles.productCardHoverable : ""}`}>
-      <div className={styles.productThumbWrap}>
-        {imageState.hasPrimaryImage ? (
-          <div className={styles.productThumbInner}>
-            <Image
-              className={`${styles.productThumb} ${styles.productThumbFront}`}
-              src={imageState.primaryImageUrl}
-              alt={item.goodsNm ?? "상품 이미지"}
-              fill
-              sizes="(max-width: 900px) 50vw, (max-width: 1200px) 25vw, 20vw"
-            />
-            {imageState.hasSecondaryImage ? (
+      <Link className={styles.productLink} href={buildGoodsDetailHref(item.goodsId)}>
+        <div className={styles.productThumbWrap}>
+          {imageState.hasPrimaryImage ? (
+            <div className={styles.productThumbInner}>
               <Image
-                className={`${styles.productThumb} ${styles.productThumbBack}`}
-                src={imageState.secondaryImageUrl}
+                className={`${styles.productThumb} ${styles.productThumbFront}`}
+                src={imageState.primaryImageUrl}
                 alt={item.goodsNm ?? "상품 이미지"}
                 fill
                 sizes="(max-width: 900px) 50vw, (max-width: 1200px) 25vw, 20vw"
               />
-            ) : null}
+              {imageState.hasSecondaryImage ? (
+                <Image
+                  className={`${styles.productThumb} ${styles.productThumbBack}`}
+                  src={imageState.secondaryImageUrl}
+                  alt={item.goodsNm ?? "상품 이미지"}
+                  fill
+                  sizes="(max-width: 900px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                />
+              ) : null}
+            </div>
+          ) : (
+            <div className={styles.productPlaceholder}>이미지 준비중</div>
+          )}
+        </div>
+
+        <div className={styles.productBrand}>{item.brandNm || "브랜드"}</div>
+        <div className={styles.productName}>{item.goodsNm || "상품명 준비중"}</div>
+
+        {priceState.showSupplyStrike ? (
+          <div className={styles.priceRow}>
+            <span className={styles.salePrice}>{formatPrice(priceState.saleAmt)}원</span>
+            <span className={styles.supplyPrice}>{formatPrice(priceState.supplyAmt)}원</span>
           </div>
         ) : (
-          <div className={styles.productPlaceholder}>이미지 준비중</div>
+          <div className={styles.priceRow}>
+            <span className={styles.salePrice}>{formatPrice(priceState.saleAmt)}원</span>
+          </div>
         )}
-      </div>
-
-      <div className={styles.productBrand}>{item.brandNm || "브랜드"}</div>
-      <div className={styles.productName}>{item.goodsNm || "상품명 준비중"}</div>
-
-      {priceState.showSupplyStrike ? (
-        <div className={styles.priceRow}>
-          <span className={styles.salePrice}>{formatPrice(priceState.saleAmt)}원</span>
-          <span className={styles.supplyPrice}>{formatPrice(priceState.supplyAmt)}원</span>
-        </div>
-      ) : (
-        <div className={styles.priceRow}>
-          <span className={styles.salePrice}>{formatPrice(priceState.saleAmt)}원</span>
-        </div>
-      )}
+      </Link>
     </article>
   );
 }
