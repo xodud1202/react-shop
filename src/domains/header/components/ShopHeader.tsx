@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { subscribeShopAuthChangeEvent } from "@/shared/auth/shopAuthEvent";
+import { useRouter } from "next/navigation";
+import { emitShopAuthChangeEvent, subscribeShopAuthChangeEvent } from "@/shared/auth/shopAuthEvent";
 import type { ShopHeaderBrand, ShopHeaderCategoryTree } from "@/domains/header/types";
 import { buildCategoryHref, resolveInitialLevel2CategoryId } from "@/domains/header/utils/headerNavigationUtils";
 import styles from "./ShopHeader.module.css";
@@ -20,12 +21,14 @@ interface ShopHeaderProps {
 
 // 스타일24 레퍼런스 기반 1라인 헤더를 렌더링합니다.
 export default function ShopHeader({ initialCategoryTree, initialBrands, isLoggedIn }: ShopHeaderProps) {
+  const router = useRouter();
   const [categoryTree, setCategoryTree] = useState<ShopHeaderCategoryTree[]>(initialCategoryTree);
   const [brands, setBrands] = useState<ShopHeaderBrand[]>(initialBrands);
   const [isLoggedInState, setIsLoggedInState] = useState<boolean>(isLoggedIn);
   const [isSearchLayerOpen, setIsSearchLayerOpen] = useState(false);
   const [isCategoryLayerOpen, setIsCategoryLayerOpen] = useState(false);
   const [isBrandLayerOpen, setIsBrandLayerOpen] = useState(false);
+  const [isLogoutSubmitting, setIsLogoutSubmitting] = useState(false);
   const [activeLevel1CategoryId, setActiveLevel1CategoryId] = useState<string | null>(initialCategoryTree[0]?.categoryId ?? null);
   const [activeLevel2CategoryId, setActiveLevel2CategoryId] = useState<string | null>(
     initialCategoryTree[0]?.children[0]?.categoryId ?? null,
@@ -137,6 +140,39 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
   // 임시 메뉴 클릭 동작을 처리합니다.
   const handlePlaceholderClick = (menuName: string) => {
     window.alert(`${menuName} 기능은 준비중입니다.`);
+  };
+
+  // 로그아웃 버튼 클릭 시 세션/쿠키를 만료하고 헤더 상태를 갱신합니다.
+  const handleClickLogout = async () => {
+    if (isLogoutSubmitting) {
+      return;
+    }
+
+    try {
+      // 로그아웃 API를 호출해 서버 세션과 로그인 쿠키를 만료합니다.
+      setIsLogoutSubmitting(true);
+      const response = await fetch("/api/shop/auth/logout", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error("로그아웃 처리에 실패했습니다.");
+      }
+
+      // 헤더 로그인 상태를 즉시 비로그인으로 갱신하고 화면을 새로고침합니다.
+      emitShopAuthChangeEvent({
+        isLoggedIn: false,
+        custNo: "",
+      });
+      setIsSearchLayerOpen(false);
+      router.refresh();
+    } catch (error) {
+      // 로그아웃 실패 시 사용자에게 안내 문구를 노출합니다.
+      window.alert(error instanceof Error ? error.message : "로그아웃 처리에 실패했습니다.");
+    } finally {
+      setIsLogoutSubmitting(false);
+    }
   };
 
   return (
@@ -279,20 +315,6 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
                 )}
               </div>
 
-              {isLoggedInState ? (
-                <button
-                  type="button"
-                  className={styles.iconButton}
-                  onClick={() => handlePlaceholderClick("마이페이지")}
-                  aria-label="마이페이지"
-                >
-                  <i className="fa-regular fa-user" />
-                </button>
-              ) : (
-                <Link className={styles.iconButton} href="/login/form" aria-label="로그인">
-                  <i className="fa-solid fa-right-to-bracket" />
-                </Link>
-              )}
               <button
                 type="button"
                 className={styles.iconButton}
@@ -301,6 +323,32 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
               >
                 <i className="fa-solid fa-bag-shopping" />
               </button>
+
+              {isLoggedInState ? (
+                <>
+                  <button
+                    type="button"
+                    className={styles.iconButton}
+                    onClick={() => handlePlaceholderClick("마이페이지")}
+                    aria-label="마이페이지"
+                  >
+                    <i className="fa-regular fa-user" />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.iconButton}
+                    onClick={handleClickLogout}
+                    aria-label="로그아웃"
+                    disabled={isLogoutSubmitting}
+                  >
+                    <i className="fa-solid fa-right-from-bracket" />
+                  </button>
+                </>
+              ) : (
+                <Link className={styles.iconButton} href="/login/form" aria-label="로그인">
+                  <i className="fa-solid fa-right-to-bracket" />
+                </Link>
+              )}
             </div>
           </div>
         </div>

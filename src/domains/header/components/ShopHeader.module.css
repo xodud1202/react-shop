@@ -97,6 +97,11 @@
   background: #f3f4f6;
 }
 
+.iconButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .layerPanel {
   position: absolute;
   top: calc(100% - 1px);

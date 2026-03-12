@@ -90,7 +90,7 @@ export async function fetchShopGoodsDetailServerData(goodsId: string, cookieHead
   const path = buildShopGoodsDetailPath(normalizedGoodsId);
   const requestInit = cookieHeader.trim() === "" ? undefined : { headers: { cookie: cookieHeader } };
   const response = await readShopServerApiResponse<ShopGoodsDetailResponse>(path, requestInit);
-  if (!response || !response.goods || typeof response.goods.goodsId !== "string" || response.goods.goodsId.trim() === "") {
+  if (!response || !response.goods || response.goods.goodsId.trim() === "") {
     return null;
   }
   return normalizeShopGoodsDetailResponse(normalizedGoodsId, response);

@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 import type { ShopGoodsDetailResponse, ShopGoodsGroupItem, ShopGoodsImage, ShopGoodsSizeItem } from "@/domains/goods/types";
+import { buildLoginFormPath } from "@/domains/login/utils/loginRedirectUtils";
+import ShopConfirmLayer from "@/shared/components/layer/ShopConfirmLayer";
 import styles from "./ShopGoodsDetailTop.module.css";
 
 interface ShopGoodsDetailTopProps {
@@ -21,6 +24,14 @@ function buildGoodsDetailShareUrl(goodsId: string): string {
     return `/goods?goodsId=${encodeURIComponent(goodsId)}`;
   }
   return `${window.location.origin}/goods?goodsId=${encodeURIComponent(goodsId)}`;
+}
+
+// 현재 화면 경로(pathname + search)를 로그인 복귀용 경로로 반환합니다.
+function resolveCurrentPagePath(): string {
+  if (typeof window === "undefined") {
+    return "/";
+  }
+  return `${window.location.pathname}${window.location.search}`;
 }
 
 // 텍스트를 클립보드에 복사합니다.
@@ -88,19 +99,30 @@ function resolveOrderedSizeList(sizeList: ShopGoodsSizeItem[]): ShopGoodsSizeIte
   });
 }
 
-// 최초 선택할 사이즈 코드를 계산합니다.
-function resolveInitialSelectedSizeId(orderedSizeList: ShopGoodsSizeItem[]): string {
-  const firstInStock = orderedSizeList.find((item) => !item.soldOut);
-  if (firstInStock) {
-    return firstInStock.sizeId;
-  }
-  return orderedSizeList[0]?.sizeId ?? "";
-}
-
 // 현재 선택된 사이즈명을 계산합니다.
 function resolveSelectedSizeLabel(orderedSizeList: ShopGoodsSizeItem[], selectedSizeId: string): string {
   const selectedItem = orderedSizeList.find((item) => item.sizeId === selectedSizeId);
   return selectedItem?.sizeId ?? "-";
+}
+
+// 사이즈 재고 수량을 0 이상의 정수로 정규화합니다.
+function resolveStockQuantity(stockQty: number): number {
+  if (!Number.isFinite(stockQty)) {
+    return 0;
+  }
+  const normalizedStockQty = Math.floor(stockQty);
+  return normalizedStockQty > 0 ? normalizedStockQty : 0;
+}
+
+// 수량 값을 1~최대수량 범위로 보정합니다.
+function clampOrderQuantity(quantity: number, maxQuantity: number): number {
+  const normalizedMaxQuantity = resolveStockQuantity(maxQuantity);
+  if (normalizedMaxQuantity <= 0) {
+    return 1;
+  }
+  const normalizedQuantity = Number.isFinite(quantity) ? Math.floor(quantity) : 1;
+  const safeQuantity = normalizedQuantity < 1 ? 1 : normalizedQuantity;
+  return safeQuantity > normalizedMaxQuantity ? normalizedMaxQuantity : safeQuantity;
 }
 
 // 현재 뷰포트 기준으로 노출할 상품상세 HTML을 계산합니다.
@@ -115,11 +137,13 @@ function resolveVisibleDetailHtml(detailData: ShopGoodsDetailResponse | null, is
 
 // 상품상세 상단 UI를 렌더링합니다.
 export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: ShopGoodsDetailTopProps) {
+  const router = useRouter();
+
   // 반응형 상세 HTML 선택을 위해 모바일 뷰포트 여부를 관리합니다.
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(false);
 
   // 상품상세 HTML 펼침/접힘 상태와 overflow 여부를 관리합니다.
-  const [detailExpandedGoodsId, setDetailExpandedGoodsId] = useState<string>("");
+  const [isDetailExpanded, setIsDetailExpanded] = useState<boolean>(false);
   const [isDetailOverflowed, setIsDetailOverflowed] = useState<boolean>(false);
   const detailContentRef = useRef<HTMLDivElement | null>(null);
 
@@ -139,19 +163,20 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
 
   // 사용자가 선택한 사이즈 상태를 관리합니다.
   const [selectedSizeId, setSelectedSizeId] = useState<string>("");
+  // 사용자가 선택한 구매 수량 상태를 관리합니다.
+  const [orderQuantity, setOrderQuantity] = useState<number>(1);
   const [shareCopied, setShareCopied] = useState<boolean>(false);
-  const initialSelectedSizeId = useMemo(() => resolveInitialSelectedSizeId(orderedSizeList), [orderedSizeList]);
-  const effectiveSelectedSizeId = useMemo(() => {
-    if (selectedSizeId !== "" && orderedSizeList.some((item) => item.sizeId === selectedSizeId)) {
-      return selectedSizeId;
-    }
-    return initialSelectedSizeId;
-  }, [selectedSizeId, orderedSizeList, initialSelectedSizeId]);
+  // 위시리스트 로그인 필요 확인 레이어 노출 여부를 관리합니다.
+  const [showWishlistLoginConfirmLayer, setShowWishlistLoginConfirmLayer] = useState<boolean>(false);
+  const [wishlistOverride, setWishlistOverride] = useState<{ goodsId: string; wished: boolean } | null>(null);
+  const [wishlistLoadingGoodsId, setWishlistLoadingGoodsId] = useState<string>("");
+  // 장바구니 등록 API 요청 중 상태를 관리합니다.
+  const [isCartSubmitting, setIsCartSubmitting] = useState<boolean>(false);
 
   // 선택된 사이즈명을 계산합니다.
   const selectedSizeLabel = useMemo(
-    () => resolveSelectedSizeLabel(orderedSizeList, effectiveSelectedSizeId),
-    [orderedSizeList, effectiveSelectedSizeId],
+    () => resolveSelectedSizeLabel(orderedSizeList, selectedSizeId),
+    [orderedSizeList, selectedSizeId],
   );
   const visibleDetailHtml = useMemo(
     () => resolveVisibleDetailHtml(detailData, isMobileViewport),
@@ -163,7 +188,78 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
     [detailData?.goods?.brandNoti],
   );
   const currentGoodsId = detailData?.goods?.goodsId ?? "";
-  const isDetailExpanded = detailExpandedGoodsId !== "" && detailExpandedGoodsId === currentGoodsId;
+  const isWished =
+    wishlistOverride !== null && wishlistOverride.goodsId === currentGoodsId
+      ? wishlistOverride.wished
+      : Boolean(detailData?.wishlist?.wished);
+  const isWishlistSubmitting = wishlistLoadingGoodsId === currentGoodsId;
+  const selectedSizeItem = useMemo(
+    () => orderedSizeList.find((sizeItem) => sizeItem.sizeId === selectedSizeId) ?? null,
+    [orderedSizeList, selectedSizeId],
+  );
+  const selectedSizeStockQty = useMemo(
+    () => resolveStockQuantity(selectedSizeItem?.stockQty ?? 0),
+    [selectedSizeItem?.stockQty],
+  );
+  const isSelectedSizeOutOfStock =
+    selectedSizeItem === null || selectedSizeItem.soldOut || selectedSizeStockQty <= 0;
+  const isOrderQuantityDisabled = selectedSizeItem === null || isSelectedSizeOutOfStock;
+  const canDecreaseOrderQuantity = !isOrderQuantityDisabled && orderQuantity > 1;
+  const canIncreaseOrderQuantity = !isOrderQuantityDisabled && orderQuantity < selectedSizeStockQty;
+  const isActionButtonDisabled = isOrderQuantityDisabled;
+
+  // 상품코드 변경 시 상세 영역을 기본 접힘 상태로 초기화합니다.
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    let animationFrameId = 0;
+    animationFrameId = window.requestAnimationFrame(() => {
+      setIsDetailExpanded(false);
+      setIsDetailOverflowed(true);
+    });
+
+    return () => {
+      if (animationFrameId !== 0) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [currentGoodsId]);
+
+  // 상품코드가 변경되면 사이즈/수량 선택 상태를 초기값으로 되돌립니다.
+  useEffect(() => {
+    setSelectedSizeId("");
+    setOrderQuantity(1);
+    setShowWishlistLoginConfirmLayer(false);
+    setIsCartSubmitting(false);
+  }, [currentGoodsId]);
+
+  // 선택된 사이즈 재고가 변경되면 수량을 유효 범위로 자동 보정합니다.
+  useEffect(() => {
+    if (isOrderQuantityDisabled) {
+      setOrderQuantity(1);
+      return;
+    }
+    setOrderQuantity((previousQuantity) => clampOrderQuantity(previousQuantity, selectedSizeStockQty));
+  }, [isOrderQuantityDisabled, selectedSizeStockQty]);
+
+  // 브라우저 히스토리 복귀(BFCache) 재진입 시에도 상세 영역을 접힘 상태로 보정합니다.
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handlePageShow = (): void => {
+      setIsDetailExpanded(false);
+      setIsDetailOverflowed(true);
+    };
+    window.addEventListener("pageshow", handlePageShow);
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, []);
 
   // 뷰포트 변경 시 모바일 상태를 동기화합니다.
   useEffect(() => {
@@ -195,6 +291,11 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
     }
 
     let animationFrameId = 0;
+    const currentDetailElement = detailContentRef.current;
+    const imageElementList = currentDetailElement
+      ? Array.from(currentDetailElement.querySelectorAll("img"))
+      : [];
+
     const measureDetailOverflow = (): void => {
       // 스크롤 높이를 기준으로 접힘 버튼 필요 여부를 계산합니다.
       const currentDetailElement = detailContentRef.current;
@@ -212,13 +313,25 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
     scheduleDetailOverflowMeasure();
 
     window.addEventListener("resize", scheduleDetailOverflowMeasure);
+    imageElementList.forEach((imageElement) => {
+      if (imageElement.complete) {
+        return;
+      }
+      imageElement.addEventListener("load", scheduleDetailOverflowMeasure);
+      imageElement.addEventListener("error", scheduleDetailOverflowMeasure);
+    });
+
     return () => {
       if (animationFrameId !== 0) {
         window.cancelAnimationFrame(animationFrameId);
       }
       window.removeEventListener("resize", scheduleDetailOverflowMeasure);
+      imageElementList.forEach((imageElement) => {
+        imageElement.removeEventListener("load", scheduleDetailOverflowMeasure);
+        imageElement.removeEventListener("error", scheduleDetailOverflowMeasure);
+      });
     };
-  }, [visibleDetailHtml]);
+  }, [visibleDetailHtml, currentGoodsId]);
 
   // 상세 데이터가 없으면 안내 메시지를 렌더링합니다.
   if (!detailData || !detailData.goods) {
@@ -260,7 +373,160 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
 
   // 상품상세 전체보기 버튼 클릭 시 나머지 영역을 노출합니다.
   const handleDetailExpandButtonClick = (): void => {
-    setDetailExpandedGoodsId(currentGoodsId);
+    setIsDetailExpanded(true);
+  };
+
+  // 위시리스트 버튼 클릭 시 등록/해제를 토글합니다.
+  const handleWishlistButtonClick = async (): Promise<void> => {
+    // 중복 요청을 방지하고 상품코드가 비어 있으면 요청하지 않습니다.
+    const targetGoodsId = currentGoodsId.trim();
+    if (isWishlistSubmitting || targetGoodsId === "") {
+      return;
+    }
+
+    try {
+      // 위시 토글 API를 호출하는 동안 로딩 상태를 설정합니다.
+      setWishlistLoadingGoodsId(targetGoodsId);
+      const response = await fetch("/api/shop/goods/wishlist/toggle", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          goodsId: targetGoodsId,
+        }),
+      });
+
+      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
+      const payload = (await response.json().catch(() => null)) as { wished?: boolean; message?: string } | null;
+
+      // 비로그인/세션만료면 로그인 화면으로 이동하고 복귀 경로를 전달합니다.
+      if (response.status === 401) {
+        setShowWishlistLoginConfirmLayer(true);
+        return;
+      }
+
+      // 실패 응답이면 서버 메시지를 우선 노출합니다.
+      if (!response.ok) {
+        window.alert(payload?.message ?? "위시리스트 처리에 실패했습니다.");
+        return;
+      }
+
+      // 성공 응답의 wished 상태로 하트 아이콘을 즉시 갱신합니다.
+      setWishlistOverride({
+        goodsId: targetGoodsId,
+        wished: Boolean(payload?.wished),
+      });
+    } catch {
+      // 네트워크/예외 오류 시 공통 실패 문구를 노출합니다.
+      window.alert("위시리스트 처리에 실패했습니다.");
+    } finally {
+      // 요청 종료 후 로딩 상태를 해제합니다.
+      setWishlistLoadingGoodsId("");
+    }
+  };
+
+  // 그룹상품 클릭 시 상세 영역 상태를 기본 접힘으로 초기화합니다.
+  const handleGroupGoodsNavigate = (): void => {
+    setIsDetailExpanded(false);
+    setIsDetailOverflowed(true);
+  };
+
+  // 로그인 필요 확인 레이어를 닫습니다.
+  const handleCloseWishlistLoginConfirmLayer = (): void => {
+    setShowWishlistLoginConfirmLayer(false);
+  };
+
+  // 로그인 필요 확인 레이어에서 확인 시 로그인 화면으로 이동합니다.
+  const handleConfirmWishlistLoginMove = (): void => {
+    setShowWishlistLoginConfirmLayer(false);
+    router.push(buildLoginFormPath(resolveCurrentPagePath()));
+  };
+
+  // 사이즈 버튼 클릭 시 선택값을 반영하고 수량을 1로 초기화합니다.
+  const handleSizeButtonClick = (sizeItem: ShopGoodsSizeItem): void => {
+    setSelectedSizeId(sizeItem.sizeId);
+    setOrderQuantity(1);
+  };
+
+  // 수량 감소 버튼 클릭 시 최소 1까지 감소시킵니다.
+  const handleDecreaseOrderQuantityClick = (): void => {
+    if (!canDecreaseOrderQuantity) {
+      return;
+    }
+    setOrderQuantity((previousQuantity) => clampOrderQuantity(previousQuantity - 1, selectedSizeStockQty));
+  };
+
+  // 수량 증가 버튼 클릭 시 선택 사이즈 재고 수량까지만 증가시킵니다.
+  const handleIncreaseOrderQuantityClick = (): void => {
+    if (!canIncreaseOrderQuantity) {
+      return;
+    }
+    setOrderQuantity((previousQuantity) => clampOrderQuantity(previousQuantity + 1, selectedSizeStockQty));
+  };
+
+  // 장바구니 버튼 클릭 시 선택 옵션을 장바구니에 등록합니다.
+  const handleCartButtonClick = async (): Promise<void> => {
+    // 중복 요청을 방지하고 필수 선택값을 확인합니다.
+    if (isCartSubmitting) {
+      return;
+    }
+    const targetGoodsId = currentGoodsId.trim();
+    const targetSizeId = selectedSizeId.trim();
+    if (targetGoodsId === "") {
+      window.alert("상품코드를 확인해주세요.");
+      return;
+    }
+    if (targetSizeId === "") {
+      window.alert("사이즈를 선택해주세요.");
+      return;
+    }
+    if (!Number.isFinite(orderQuantity) || orderQuantity < 1) {
+      window.alert("수량을 확인해주세요.");
+      return;
+    }
+
+    try {
+      // 장바구니 등록 API를 호출하는 동안 로딩 상태를 설정합니다.
+      setIsCartSubmitting(true);
+      const response = await fetch("/api/shop/goods/cart/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          goodsId: targetGoodsId,
+          sizeId: targetSizeId,
+          qty: orderQuantity,
+        }),
+      });
+
+      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      // 비로그인/세션만료면 로그인 확인 레이어를 노출합니다.
+      if (response.status === 401) {
+        setShowWishlistLoginConfirmLayer(true);
+        return;
+      }
+
+      // 실패 응답이면 서버 메시지를 우선 노출합니다.
+      if (!response.ok) {
+        window.alert(payload?.message ?? "장바구니 처리에 실패했습니다.");
+        return;
+      }
+
+      // 성공 시 완료 메시지를 노출합니다.
+      window.alert(payload?.message ?? "장바구니에 담았습니다.");
+    } catch {
+      // 네트워크/예외 오류 시 공통 실패 문구를 노출합니다.
+      window.alert("장바구니 처리에 실패했습니다.");
+    } finally {
+      // 요청 종료 후 로딩 상태를 해제합니다.
+      setIsCartSubmitting(false);
+    }
   };
 
   return (
@@ -326,10 +592,12 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
               <h1 className={styles.goodsName}>{detailData.goods.goodsNm}</h1>
               <button
                 type="button"
-                className={`${styles.iconButton} ${styles.wishlistButton} ${detailData.wishlist.wished ? styles.wishlistActive : ""}`}
-                aria-label="위시리스트"
+                className={`${styles.iconButton} ${styles.wishlistButton} ${isWished ? styles.wishlistActive : ""}`}
+                aria-label={isWished ? "위시리스트 해제" : "위시리스트 추가"}
+                onClick={handleWishlistButtonClick}
+                disabled={isWishlistSubmitting}
               >
-                <i className={detailData.wishlist.wished ? "fa-solid fa-heart" : "fa-regular fa-heart"} />
+                <i className={isWished ? "fa-solid fa-heart" : "fa-regular fa-heart"} />
               </button>
             </div>
 
@@ -385,6 +653,7 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
                       href={`/goods?goodsId=${groupItem.goodsId}`}
                       className={`${styles.groupGoodsLink} ${isSelected ? styles.groupGoodsSelected : ""}`}
                       aria-label={`${groupItem.goodsId} 상품으로 이동`}
+                      onClick={handleGroupGoodsNavigate}
                     >
                       {groupItem.firstImgUrl || groupItem.firstImgPath ? (
                         <Image
@@ -410,29 +679,59 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
 
               <div className={styles.sizeButtonList}>
                 {orderedSizeList.map((sizeItem) => {
-                  const isSelected = effectiveSelectedSizeId === sizeItem.sizeId;
+                  const isSelected = selectedSizeId === sizeItem.sizeId;
+                  const isSizeSoldOut = sizeItem.soldOut || resolveStockQuantity(sizeItem.stockQty) <= 0;
                   return (
                     <button
                       key={sizeItem.sizeId}
                       type="button"
-                      className={`${styles.sizeButton} ${isSelected ? styles.sizeButtonSelected : ""} ${sizeItem.soldOut ? styles.sizeButtonSoldOut : ""}`}
-                      onClick={() => setSelectedSizeId(sizeItem.sizeId)}
-                      disabled={sizeItem.soldOut}
+                      className={`${styles.sizeButton} ${isSelected ? styles.sizeButtonSelected : ""} ${isSizeSoldOut ? styles.sizeButtonSoldOut : ""}`}
+                      onClick={() => handleSizeButtonClick(sizeItem)}
+                      disabled={isSizeSoldOut}
                     >
                       <span className={styles.sizeButtonText}>{sizeItem.sizeId}</span>
                     </button>
                   );
                 })}
               </div>
+
+              <div className={styles.quantityRow}>
+                <div className={styles.quantityControl}>
+                  <button
+                    type="button"
+                    className={styles.quantityButton}
+                    aria-label="수량 감소"
+                    onClick={handleDecreaseOrderQuantityClick}
+                    disabled={!canDecreaseOrderQuantity}
+                  >
+                    -
+                  </button>
+                  <span className={styles.quantityValue}>{orderQuantity}</span>
+                  <button
+                    type="button"
+                    className={styles.quantityButton}
+                    aria-label="수량 증가"
+                    onClick={handleIncreaseOrderQuantityClick}
+                    disabled={!canIncreaseOrderQuantity}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className={styles.cutLine} />
 
             <div className={styles.actionButtonRow}>
-              <button type="button" className={styles.cartButton}>
+              <button
+                type="button"
+                className={styles.cartButton}
+                disabled={isActionButtonDisabled || isCartSubmitting}
+                onClick={handleCartButtonClick}
+              >
                 장바구니
               </button>
-              <button type="button" className={styles.buyButton}>
+              <button type="button" className={styles.buyButton} disabled={isActionButtonDisabled}>
                 바로구매
               </button>
             </div>
@@ -464,6 +763,17 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
           </section>
         ) : null}
       </div>
+
+      {showWishlistLoginConfirmLayer ? (
+        <ShopConfirmLayer
+          title="로그인 안내"
+          message="로그인이 필요한 기능입니다. 로그인하시겠습니까?"
+          confirmText="로그인"
+          cancelText="취소"
+          onConfirm={handleConfirmWishlistLoginMove}
+          onClose={handleCloseWishlistLoginConfirmLayer}
+        />
+      ) : null}
     </section>
   );
 }

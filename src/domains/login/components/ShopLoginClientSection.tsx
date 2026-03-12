@@ -4,17 +4,20 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ShopAdditionalInfoForm from "@/domains/login/components/ShopAdditionalInfoForm";
 import ShopGoogleLoginButton from "@/domains/login/components/ShopGoogleLoginButton";
+import { resolveSafeReturnUrl } from "@/domains/login/utils/loginRedirectUtils";
 import { emitShopAuthChangeEvent } from "@/shared/auth/shopAuthEvent";
 import type { ShopGoogleLoginApiResponse, ShopGoogleProfile } from "@/domains/login/types";
 import styles from "./ShopLoginClientSection.module.css";
 
 interface ShopLoginClientSectionProps {
   googleClientId: string;
+  returnUrl: string;
 }
 
 // 로그인 페이지의 구글 로그인 및 추가 정보 입력 흐름을 관리합니다.
-export default function ShopLoginClientSection({ googleClientId }: ShopLoginClientSectionProps) {
+export default function ShopLoginClientSection({ googleClientId, returnUrl }: ShopLoginClientSectionProps) {
   const router = useRouter();
+  const safeReturnUrl = resolveSafeReturnUrl(returnUrl);
   const [googleProfile, setGoogleProfile] = useState<ShopGoogleProfile | null>(null);
   const [recommendedLoginId, setRecommendedLoginId] = useState("");
   const [message, setMessage] = useState("");
@@ -56,7 +59,7 @@ export default function ShopLoginClientSection({ googleClientId }: ShopLoginClie
           isLoggedIn: true,
           custNo: payload.custNo ? String(payload.custNo) : "",
         });
-        router.replace("/");
+        router.replace(safeReturnUrl);
         router.refresh();
         return;
       }
@@ -77,9 +80,8 @@ export default function ShopLoginClientSection({ googleClientId }: ShopLoginClie
       {!isAdditionalInfoFormVisible ? <ShopGoogleLoginButton clientId={googleClientId} onGoogleProfile={handleGoogleProfile} /> : null}
       {message !== "" ? <p className={styles.statusMessage}>{message}</p> : null}
       {isAdditionalInfoFormVisible && googleProfile ? (
-        <ShopAdditionalInfoForm profile={googleProfile} recommendedLoginId={recommendedLoginId} />
+        <ShopAdditionalInfoForm profile={googleProfile} recommendedLoginId={recommendedLoginId} returnUrl={safeReturnUrl} />
       ) : null}
     </>
   );
 }
-

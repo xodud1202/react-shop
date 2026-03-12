@@ -64,7 +64,7 @@ export default function ShopGoogleLoginButton({ clientId, onGoogleProfile }: Sho
     ? "GOOGLE_CLIENT_ID 값을 추가해주세요."
     : runtimeErrorMessage.trim() !== ""
       ? runtimeErrorMessage
-      : "구글 계정 정보를 받아오는 1차 로그인 화면입니다.";
+      : "";
 
   // 스크립트와 clientId가 준비되면 구글 로그인 버튼을 렌더링합니다.
   useEffect(() => {

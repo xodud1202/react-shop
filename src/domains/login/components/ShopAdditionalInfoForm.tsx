@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { resolveSafeReturnUrl } from "@/domains/login/utils/loginRedirectUtils";
 import { emitShopAuthChangeEvent } from "@/shared/auth/shopAuthEvent";
 import { PRIVATE_POLICY_PARAGRAPHS, TERMS_PARAGRAPHS } from "@/domains/policy/constants/policyDocuments";
 import type { ShopGoogleJoinApiRequest, ShopGoogleJoinApiResponse, ShopGoogleProfile } from "@/domains/login/types";
@@ -18,13 +19,15 @@ import styles from "./ShopAdditionalInfoForm.module.css";
 interface ShopAdditionalInfoFormProps {
   profile: ShopGoogleProfile;
   recommendedLoginId: string;
+  returnUrl: string;
 }
 
 type ModalType = "private" | "terms" | null;
 
 // 구글 신규 회원 추가 정보 입력 폼을 렌더링합니다.
-export default function ShopAdditionalInfoForm({ profile, recommendedLoginId }: ShopAdditionalInfoFormProps) {
+export default function ShopAdditionalInfoForm({ profile, recommendedLoginId, returnUrl }: ShopAdditionalInfoFormProps) {
   const router = useRouter();
+  const safeReturnUrl = resolveSafeReturnUrl(returnUrl);
   const [custNm, setCustNm] = useState(profile.name);
   const [sex, setSex] = useState<"X" | "M" | "F">("X");
   const [birth, setBirth] = useState("");
@@ -136,7 +139,7 @@ export default function ShopAdditionalInfoForm({ profile, recommendedLoginId }: 
           isLoggedIn: true,
           custNo: payload.custNo ? String(payload.custNo) : "",
         });
-        router.replace("/");
+        router.replace(safeReturnUrl);
         router.refresh();
         return;
       }
