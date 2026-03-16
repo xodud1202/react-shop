@@ -67,7 +67,7 @@ export default function ShopGoodsCard({ item }: ShopGoodsCardProps) {
                 src={imageState.primaryImageUrl}
                 alt={item.goodsNm ?? "상품 이미지"}
                 fill
-                sizes="(max-width: 900px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                sizes="256px"
               />
               {imageState.hasSecondaryImage ? (
                 <Image
@@ -75,7 +75,7 @@ export default function ShopGoodsCard({ item }: ShopGoodsCardProps) {
                   src={imageState.secondaryImageUrl}
                   alt={item.goodsNm ?? "상품 이미지"}
                   fill
-                  sizes="(max-width: 900px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                  sizes="256px"
                 />
               ) : null}
             </div>
