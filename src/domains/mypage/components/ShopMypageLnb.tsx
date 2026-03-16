@@ -23,7 +23,7 @@ const SHOP_MYPAGE_LNB_MENU_LIST: ShopMypageLnbMenuItem[] = [
     ],
   },
   { label: "리뷰", href: "/mypage/review", disabled: true },
-  { label: "쿠폰함", href: "/mypage/coupon", disabled: true },
+  { label: "쿠폰함", href: "/mypage/coupon" },
   { label: "포인트 내역", href: "/mypage/point", disabled: true },
   { label: "위시리스트", href: "/mypage/wish" },
   { label: "1:1문의", href: "/mypage/inquiry", disabled: true },

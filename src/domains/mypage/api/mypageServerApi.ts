@@ -1,4 +1,10 @@
-import type { ShopMypageWishPageResponse } from "@/domains/mypage/types";
+import type {
+  ShopMypageCouponPageResponse,
+  ShopMypageCouponUnavailableGoodsItem,
+  ShopMypageDownloadableCouponItem,
+  ShopMypageOwnedCouponItem,
+  ShopMypageWishPageResponse,
+} from "@/domains/mypage/types";
 import { readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
 
 // 마이페이지 위시리스트 기본 응답값을 생성합니다.
@@ -9,6 +15,107 @@ function createDefaultShopMypageWishPageResponse(): ShopMypageWishPageResponse {
     pageNo: 1,
     pageSize: 10,
     totalPageCount: 0,
+  };
+}
+
+// 마이페이지 쿠폰함 기본 응답값을 생성합니다.
+function createDefaultShopMypageCouponPageResponse(): ShopMypageCouponPageResponse {
+  return {
+    ownedCouponList: [],
+    ownedCouponCount: 0,
+    ownedPageNo: 1,
+    ownedPageSize: 10,
+    ownedTotalPageCount: 0,
+    downloadableCouponList: [],
+    downloadableCouponCount: 0,
+    downloadablePageNo: 1,
+    downloadablePageSize: 10,
+    downloadableTotalPageCount: 0,
+  };
+}
+
+// 정수형 숫자값을 0 이상의 값으로 보정합니다.
+function normalizeNonNegativeNumber(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(Math.floor(value), 0);
+}
+
+// 정수형 숫자값을 nullable 0 이상 값으로 보정합니다.
+function normalizeNullableNonNegativeNumber(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  return Math.max(Math.floor(value), 0);
+}
+
+// 문자열 또는 null 값을 안전하게 보정합니다.
+function normalizeNullableString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmedValue = value.trim();
+  return trimmedValue === "" ? null : trimmedValue;
+}
+
+// 문자열 값을 빈 문자열 기본값으로 보정합니다.
+function normalizeString(value: unknown): string {
+  return normalizeNullableString(value) ?? "";
+}
+
+// 쿠폰 사용 불가 상품 응답 행을 기본값과 함께 정규화합니다.
+function normalizeCouponUnavailableGoodsItem(rawItem: unknown): ShopMypageCouponUnavailableGoodsItem {
+  const source = (rawItem ?? {}) as Partial<ShopMypageCouponUnavailableGoodsItem>;
+  return {
+    goodsId: normalizeString(source.goodsId),
+    goodsNm: normalizeString(source.goodsNm),
+  };
+}
+
+// 보유 쿠폰 응답 행을 기본값과 함께 정규화합니다.
+function normalizeOwnedCouponItem(rawItem: unknown): ShopMypageOwnedCouponItem {
+  const source = (rawItem ?? {}) as Partial<ShopMypageOwnedCouponItem>;
+  return {
+    custCpnNo: normalizeNonNegativeNumber(source.custCpnNo),
+    cpnNo: normalizeNonNegativeNumber(source.cpnNo),
+    cpnNm: normalizeString(source.cpnNm),
+    cpnGbCd: normalizeString(source.cpnGbCd),
+    cpnGbNm: normalizeString(source.cpnGbNm),
+    cpnDcGbCd: normalizeString(source.cpnDcGbCd),
+    cpnDcVal: normalizeNonNegativeNumber(source.cpnDcVal),
+    cpnUsableStartDt: normalizeNullableString(source.cpnUsableStartDt),
+    cpnUsableEndDt: normalizeNullableString(source.cpnUsableEndDt),
+    unavailableGoodsCount: normalizeNonNegativeNumber(source.unavailableGoodsCount),
+    unavailableGoodsList: Array.isArray(source.unavailableGoodsList)
+      ? source.unavailableGoodsList.map((item) => normalizeCouponUnavailableGoodsItem(item))
+      : [],
+  };
+}
+
+// 다운로드 가능 쿠폰 응답 행을 기본값과 함께 정규화합니다.
+function normalizeDownloadableCouponItem(rawItem: unknown): ShopMypageDownloadableCouponItem {
+  const source = (rawItem ?? {}) as Partial<ShopMypageDownloadableCouponItem>;
+  return {
+    cpnNo: normalizeNonNegativeNumber(source.cpnNo),
+    cpnNm: normalizeString(source.cpnNm),
+    cpnGbCd: normalizeString(source.cpnGbCd),
+    cpnGbNm: normalizeString(source.cpnGbNm),
+    cpnDcGbCd: normalizeString(source.cpnDcGbCd),
+    cpnDcVal: normalizeNonNegativeNumber(source.cpnDcVal),
+    cpnDownStartDt: normalizeNullableString(source.cpnDownStartDt),
+    cpnDownEndDt: normalizeNullableString(source.cpnDownEndDt),
+    cpnUseDtGb: normalizeString(source.cpnUseDtGb),
+    cpnUsableDt: normalizeNullableNonNegativeNumber(source.cpnUsableDt),
+    cpnUseStartDt: normalizeNullableString(source.cpnUseStartDt),
+    cpnUseEndDt: normalizeNullableString(source.cpnUseEndDt),
+    unavailableGoodsCount: normalizeNonNegativeNumber(source.unavailableGoodsCount),
+    unavailableGoodsList: Array.isArray(source.unavailableGoodsList)
+      ? source.unavailableGoodsList.map((item) => normalizeCouponUnavailableGoodsItem(item))
+      : [],
   };
 }
 
@@ -25,6 +132,24 @@ function buildShopMypageWishPagePath(pageNo: number): string {
   const queryParams = new URLSearchParams();
   queryParams.set("pageNo", String(resolvePageNo(pageNo)));
   return `/api/shop/mypage/wish/page?${queryParams.toString()}`;
+}
+
+// 마이페이지 쿠폰함 API 경로를 반환합니다.
+function buildShopMypageCouponPagePath(ownedPageNo: number, downloadablePageNo: number): string {
+  const queryParams = new URLSearchParams();
+  queryParams.set("ownedPageNo", String(resolvePageNo(ownedPageNo)));
+  queryParams.set("downloadablePageNo", String(resolvePageNo(downloadablePageNo)));
+  return `/api/shop/mypage/coupon/page?${queryParams.toString()}`;
+}
+
+// 마이페이지 개별 쿠폰 다운로드 API 경로를 반환합니다.
+export function getShopMypageCouponDownloadPath(): string {
+  return "/api/shop/mypage/coupon/download";
+}
+
+// 마이페이지 전체 쿠폰 다운로드 API 경로를 반환합니다.
+export function getShopMypageCouponDownloadAllPath(): string {
+  return "/api/shop/mypage/coupon/download/all";
 }
 
 // 마이페이지 위시리스트 페이지 SSR 데이터를 조회합니다.
@@ -53,5 +178,60 @@ export async function fetchShopMypageWishPageServerData(
       typeof response.totalPageCount === "number" && response.totalPageCount >= 0
         ? Math.floor(response.totalPageCount)
         : defaultResponse.totalPageCount,
+  };
+}
+
+// 마이페이지 쿠폰함 페이지 SSR 데이터를 조회합니다.
+export async function fetchShopMypageCouponPageServerData(
+  ownedPageNo: number,
+  downloadablePageNo: number,
+  cookieHeader: string,
+): Promise<ShopMypageCouponPageResponse> {
+  // 쿠폰함 API 경로를 생성해 응답을 조회합니다.
+  const path = buildShopMypageCouponPagePath(ownedPageNo, downloadablePageNo);
+  const requestInit = cookieHeader.trim() === "" ? undefined : { headers: { cookie: cookieHeader } };
+  const response = await readShopServerApiResponse<ShopMypageCouponPageResponse>(path, requestInit);
+  const defaultResponse = createDefaultShopMypageCouponPageResponse();
+
+  // 응답 유효성을 확인한 뒤 기본값을 반환합니다.
+  if (!response) {
+    return defaultResponse;
+  }
+
+  return {
+    ownedCouponList: Array.isArray(response.ownedCouponList)
+      ? response.ownedCouponList.map((item) => normalizeOwnedCouponItem(item))
+      : defaultResponse.ownedCouponList,
+    ownedCouponCount:
+      typeof response.ownedCouponCount === "number" ? normalizeNonNegativeNumber(response.ownedCouponCount) : 0,
+    ownedPageNo:
+      typeof response.ownedPageNo === "number" ? resolvePageNo(response.ownedPageNo) : defaultResponse.ownedPageNo,
+    ownedPageSize:
+      typeof response.ownedPageSize === "number" && response.ownedPageSize > 0
+        ? Math.floor(response.ownedPageSize)
+        : defaultResponse.ownedPageSize,
+    ownedTotalPageCount:
+      typeof response.ownedTotalPageCount === "number" && response.ownedTotalPageCount >= 0
+        ? Math.floor(response.ownedTotalPageCount)
+        : defaultResponse.ownedTotalPageCount,
+    downloadableCouponList: Array.isArray(response.downloadableCouponList)
+      ? response.downloadableCouponList.map((item) => normalizeDownloadableCouponItem(item))
+      : defaultResponse.downloadableCouponList,
+    downloadableCouponCount:
+      typeof response.downloadableCouponCount === "number"
+        ? normalizeNonNegativeNumber(response.downloadableCouponCount)
+        : 0,
+    downloadablePageNo:
+      typeof response.downloadablePageNo === "number"
+        ? resolvePageNo(response.downloadablePageNo)
+        : defaultResponse.downloadablePageNo,
+    downloadablePageSize:
+      typeof response.downloadablePageSize === "number" && response.downloadablePageSize > 0
+        ? Math.floor(response.downloadablePageSize)
+        : defaultResponse.downloadablePageSize,
+    downloadableTotalPageCount:
+      typeof response.downloadableTotalPageCount === "number" && response.downloadableTotalPageCount >= 0
+        ? Math.floor(response.downloadableTotalPageCount)
+        : defaultResponse.downloadableTotalPageCount,
   };
 }
