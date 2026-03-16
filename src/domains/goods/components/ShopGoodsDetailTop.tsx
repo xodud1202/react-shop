@@ -583,7 +583,7 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
                         src={imageItem.imgUrl || imageItem.imgPath}
                         alt={detailData.goods.goodsNm || "상품 이미지"}
                         fill
-                        sizes="(max-width: 900px) 100vw, 60vw"
+                        sizes="750px"
                       />
                     </div>
                   </SwiperSlide>
