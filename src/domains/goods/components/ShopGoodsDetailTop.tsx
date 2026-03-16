@@ -6,14 +6,26 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
+import { getShopGoodsCouponDownloadPath } from "@/domains/goods/api/goodsApi";
 import type { ShopGoodsDetailResponse, ShopGoodsGroupItem, ShopGoodsImage, ShopGoodsSizeItem } from "@/domains/goods/types";
 import { buildLoginFormPath } from "@/domains/login/utils/loginRedirectUtils";
+import ShopGoodsCouponDownloadLayer from "@/domains/goods/components/ShopGoodsCouponDownloadLayer";
 import ShopConfirmLayer from "@/shared/components/layer/ShopConfirmLayer";
 import styles from "./ShopGoodsDetailTop.module.css";
 
 interface ShopGoodsDetailTopProps {
   detailData: ShopGoodsDetailResponse | null;
   requestedGoodsId: string;
+}
+
+interface ShopGoodsCouponDownloadResponse {
+  message?: string;
+}
+
+interface ShopGoodsCouponDownloadResult {
+  ok: boolean;
+  unauthorized: boolean;
+  message: string;
 }
 
 const GOODS_DETAIL_COLLAPSE_HEIGHT = 500;
@@ -126,6 +138,14 @@ function clampOrderQuantity(quantity: number, maxQuantity: number): number {
   return safeQuantity > normalizedMaxQuantity ? normalizedMaxQuantity : safeQuantity;
 }
 
+// 상품쿠폰 다운로드 요청 payload를 생성합니다.
+function buildGoodsCouponDownloadRequestPayload(goodsId: string, cpnNo: number): { goodsId: string; cpnNo: number } {
+  return {
+    goodsId,
+    cpnNo,
+  };
+}
+
 // 현재 뷰포트 기준으로 노출할 상품상세 HTML을 계산합니다.
 function resolveVisibleDetailHtml(detailData: ShopGoodsDetailResponse | null, isMobileViewport: boolean): string {
   const pcDetailHtml = detailData?.detailDesc?.pcDesc?.trim() ?? "";
@@ -192,10 +212,14 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
   // 사용자가 선택한 구매 수량 상태를 관리합니다.
   const [orderQuantity, setOrderQuantity] = useState<number>(1);
   const [shareCopied, setShareCopied] = useState<boolean>(false);
-  // 위시리스트 로그인 필요 확인 레이어 노출 여부를 관리합니다.
-  const [showWishlistLoginConfirmLayer, setShowWishlistLoginConfirmLayer] = useState<boolean>(false);
+  // 로그인 필요 확인 레이어 노출 여부를 관리합니다.
+  const [showLoginConfirmLayer, setShowLoginConfirmLayer] = useState<boolean>(false);
   const [wishlistOverride, setWishlistOverride] = useState<{ goodsId: string; wished: boolean } | null>(null);
   const [wishlistLoadingGoodsId, setWishlistLoadingGoodsId] = useState<string>("");
+  // 상품쿠폰 레이어팝업 노출 여부와 다운로드 중 쿠폰번호를 관리합니다.
+  const [showCouponDownloadLayer, setShowCouponDownloadLayer] = useState<boolean>(false);
+  const [downloadingCouponNo, setDownloadingCouponNo] = useState<number | null>(null);
+  const [isDownloadAllSubmitting, setIsDownloadAllSubmitting] = useState<boolean>(false);
   // 장바구니 등록 API 요청 중 상태를 관리합니다.
   const [isCartSubmitting, setIsCartSubmitting] = useState<boolean>(false);
 
@@ -262,7 +286,10 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
   useEffect(() => {
     setSelectedSizeId("");
     setOrderQuantity(1);
-    setShowWishlistLoginConfirmLayer(false);
+    setShowLoginConfirmLayer(false);
+    setShowCouponDownloadLayer(false);
+    setDownloadingCouponNo(null);
+    setIsDownloadAllSubmitting(false);
     setIsCartSubmitting(false);
   }, [currentGoodsId]);
 
@@ -432,9 +459,9 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
       // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
       const payload = (await response.json().catch(() => null)) as { wished?: boolean; message?: string } | null;
 
-      // 비로그인/세션만료면 로그인 화면으로 이동하고 복귀 경로를 전달합니다.
+      // 비로그인/세션만료면 로그인 확인 레이어를 노출합니다.
       if (response.status === 401) {
-        setShowWishlistLoginConfirmLayer(true);
+        setShowLoginConfirmLayer(true);
         return;
       }
 
@@ -464,14 +491,159 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
     setIsDetailOverflowed(true);
   };
 
+  // 쿠폰 버튼 클릭 시 상품쿠폰 다운로드 레이어팝업을 엽니다.
+  const handleCouponButtonClick = (): void => {
+    setShowCouponDownloadLayer(true);
+  };
+
+  // 상품쿠폰 다운로드 레이어팝업을 닫습니다.
+  const handleCloseCouponDownloadLayer = (): void => {
+    setShowCouponDownloadLayer(false);
+  };
+
+  // 상품쿠폰 1건 다운로드 API를 호출하고 처리 결과를 반환합니다.
+  const requestCouponDownload = async (cpnNo: number): Promise<ShopGoodsCouponDownloadResult> => {
+    // 필수 요청값을 확인합니다.
+    const targetGoodsId = currentGoodsId.trim();
+    if (targetGoodsId === "") {
+      return {
+        ok: false,
+        unauthorized: false,
+        message: "상품코드를 확인해주세요.",
+      };
+    }
+    if (!Number.isFinite(cpnNo) || cpnNo < 1) {
+      return {
+        ok: false,
+        unauthorized: false,
+        message: "쿠폰번호를 확인해주세요.",
+      };
+    }
+
+    try {
+      // 상품상세 상품쿠폰 다운로드 API를 호출합니다.
+      const response = await fetch(getShopGoodsCouponDownloadPath(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(buildGoodsCouponDownloadRequestPayload(targetGoodsId, cpnNo)),
+      });
+
+      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
+      const payload = (await response.json().catch(() => null)) as ShopGoodsCouponDownloadResponse | null;
+
+      // 비로그인/세션만료는 별도 상태로 반환합니다.
+      if (response.status === 401) {
+        return {
+          ok: false,
+          unauthorized: true,
+          message: payload?.message ?? "로그인이 필요합니다.",
+        };
+      }
+
+      // 실패 응답이면 서버 메시지를 함께 반환합니다.
+      if (!response.ok) {
+        return {
+          ok: false,
+          unauthorized: false,
+          message: payload?.message ?? "쿠폰 다운로드에 실패했습니다.",
+        };
+      }
+
+      // 성공 시 완료 메시지를 반환합니다.
+      return {
+        ok: true,
+        unauthorized: false,
+        message: payload?.message ?? "쿠폰을 다운로드했습니다.",
+      };
+    } catch {
+      // 네트워크/예외 오류 시 공통 실패 문구를 반환합니다.
+      return {
+        ok: false,
+        unauthorized: false,
+        message: "쿠폰 다운로드에 실패했습니다.",
+      };
+    }
+  };
+
+  // 레이어팝업에서 선택한 상품쿠폰 1건을 다운로드합니다.
+  const handleCouponDownloadClick = async (cpnNo: number): Promise<void> => {
+    // 중복 요청을 방지하고 필수 요청값을 확인합니다.
+    if (downloadingCouponNo !== null || isDownloadAllSubmitting) {
+      return;
+    }
+
+    try {
+      // 쿠폰 다운로드 API를 호출하는 동안 대상 쿠폰번호를 로딩 상태로 관리합니다.
+      setDownloadingCouponNo(cpnNo);
+      const result = await requestCouponDownload(cpnNo);
+
+      // 비로그인/세션만료면 로그인 확인 레이어를 노출합니다.
+      if (result.unauthorized) {
+        setShowLoginConfirmLayer(true);
+        return;
+      }
+
+      // 실패 응답이면 서버 메시지를 우선 노출합니다.
+      if (!result.ok) {
+        window.alert(result.message);
+        return;
+      }
+
+      // 성공 시 완료 메시지를 노출합니다.
+      window.alert(result.message);
+    } finally {
+      // 요청 종료 후 로딩 상태를 해제합니다.
+      setDownloadingCouponNo(null);
+    }
+  };
+
+  // 레이어팝업에 노출 중인 상품쿠폰을 순차적으로 전체 다운로드합니다.
+  const handleCouponDownloadAllClick = async (): Promise<void> => {
+    // 중복 요청과 빈 목록을 방지합니다.
+    if (downloadingCouponNo !== null || isDownloadAllSubmitting) {
+      return;
+    }
+    if (detailData.coupons.length === 0) {
+      window.alert("다운로드 가능한 상품쿠폰이 없습니다.");
+      return;
+    }
+
+    try {
+      // 전체 다운로드 수행 중 상태를 설정합니다.
+      setIsDownloadAllSubmitting(true);
+
+      // 현재 노출 중인 상품쿠폰을 순차적으로 다운로드합니다.
+      for (const couponItem of detailData.coupons) {
+        const result = await requestCouponDownload(couponItem.cpnNo);
+        if (result.unauthorized) {
+          setShowLoginConfirmLayer(true);
+          return;
+        }
+        if (!result.ok) {
+          window.alert(result.message);
+          return;
+        }
+      }
+
+      // 모든 쿠폰 다운로드가 완료되면 안내 메시지를 노출합니다.
+      window.alert("전체 쿠폰을 다운로드했습니다.");
+    } finally {
+      // 전체 다운로드 종료 후 로딩 상태를 해제합니다.
+      setIsDownloadAllSubmitting(false);
+    }
+  };
+
   // 로그인 필요 확인 레이어를 닫습니다.
-  const handleCloseWishlistLoginConfirmLayer = (): void => {
-    setShowWishlistLoginConfirmLayer(false);
+  const handleCloseLoginConfirmLayer = (): void => {
+    setShowLoginConfirmLayer(false);
   };
 
   // 로그인 필요 확인 레이어에서 확인 시 로그인 화면으로 이동합니다.
-  const handleConfirmWishlistLoginMove = (): void => {
-    setShowWishlistLoginConfirmLayer(false);
+  const handleConfirmLoginMove = (): void => {
+    setShowLoginConfirmLayer(false);
     router.push(buildLoginFormPath(resolveCurrentPagePath()));
   };
 
@@ -539,7 +711,7 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
 
       // 비로그인/세션만료면 로그인 확인 레이어를 노출합니다.
       if (response.status === 401) {
-        setShowWishlistLoginConfirmLayer(true);
+        setShowLoginConfirmLayer(true);
         return;
       }
 
@@ -645,7 +817,12 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
                 </div>
               )}
 
-              <button type="button" className={styles.couponButton} aria-label="쿠폰받기">
+              <button
+                type="button"
+                className={styles.couponButton}
+                aria-label="쿠폰받기"
+                onClick={handleCouponButtonClick}
+              >
                 {couponButtonLabel}
               </button>
             </div>
@@ -833,14 +1010,25 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
         ) : null}
       </div>
 
-      {showWishlistLoginConfirmLayer ? (
+      {showCouponDownloadLayer ? (
+        <ShopGoodsCouponDownloadLayer
+          couponList={detailData.coupons}
+          downloadingCouponNo={downloadingCouponNo}
+          isDownloadAllSubmitting={isDownloadAllSubmitting}
+          onDownload={(couponItem) => void handleCouponDownloadClick(couponItem.cpnNo)}
+          onDownloadAll={() => void handleCouponDownloadAllClick()}
+          onClose={handleCloseCouponDownloadLayer}
+        />
+      ) : null}
+
+      {showLoginConfirmLayer ? (
         <ShopConfirmLayer
           title="로그인 안내"
           message="로그인이 필요한 기능입니다. 로그인하시겠습니까?"
           confirmText="로그인"
           cancelText="취소"
-          onConfirm={handleConfirmWishlistLoginMove}
-          onClose={handleCloseWishlistLoginConfirmLayer}
+          onConfirm={handleConfirmLoginMove}
+          onClose={handleCloseLoginConfirmLayer}
         />
       ) : null}
     </section>
