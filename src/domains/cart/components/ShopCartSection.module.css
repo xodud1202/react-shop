@@ -1,0 +1,400 @@
+.cartSection {
+  width: min(1280px, calc(100% - 40px));
+  margin: 40px auto 80px;
+}
+
+.cartLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+.leftPanel {
+  background: #fff;
+  border: 1px solid #eceff3;
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.sectionCount {
+  margin: 0;
+  color: #687182;
+  font-size: 14px;
+}
+
+.topActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0 18px;
+  border-bottom: 1px solid #eceff3;
+}
+
+.checkAllLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #1f2430;
+}
+
+.topButtonGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.secondaryButton {
+  border: 1px solid #cfd6e0;
+  border-radius: 8px;
+  background: #fff;
+  color: #253041;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.emptyState {
+  margin-top: 18px;
+  border: 1px dashed #ccd4df;
+  border-radius: 10px;
+  padding: 32px 20px;
+  text-align: center;
+  color: #748092;
+  font-size: 15px;
+}
+
+.cartList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cartItem {
+  display: grid;
+  grid-template-columns: 28px 120px minmax(0, 1fr) 150px 120px;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 20px 0;
+  border-bottom: 1px solid #eceff3;
+}
+
+.cartItem:last-child {
+  border-bottom: none;
+}
+
+.cartItemCheckWrap {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.thumbnailLink {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f3f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8793a7;
+  font-size: 12px;
+}
+
+.thumbnailImage {
+  object-fit: cover;
+}
+
+.thumbnailFallback {
+  padding: 8px;
+  text-align: center;
+}
+
+.itemContent {
+  min-width: 0;
+}
+
+.goodsName {
+  color: #121926;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.goodsCode {
+  margin: 8px 0 4px;
+  color: #6f7c90;
+  font-size: 12px;
+}
+
+.optionRow {
+  margin-top: 10px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.optionField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #556279;
+}
+
+.optionField select,
+.optionField input {
+  min-width: 88px;
+  height: 34px;
+  border: 1px solid #cdd4de;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: #1f2938;
+  background: #fff;
+}
+
+.itemPriceColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  min-height: 120px;
+}
+
+.supplyPriceText {
+  margin: 0;
+  color: #7a879b;
+  font-size: 14px;
+  text-decoration: line-through;
+}
+
+.salePriceText {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.itemActionColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.primaryButton {
+  border: none;
+  border-radius: 8px;
+  background: #121926;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.rightPanel {
+  position: sticky;
+  top: 100px;
+  border: 1px solid #e7ebf2;
+  border-radius: 16px;
+  background: #fff;
+  padding: 20px 18px;
+}
+
+.summaryTitle {
+  margin: 0 0 14px;
+  font-size: 20px;
+  color: #121926;
+}
+
+.summaryList {
+  margin: 0;
+  padding: 0;
+}
+
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  color: #354052;
+  font-size: 14px;
+}
+
+.summaryRow dt,
+.summaryRow dd {
+  margin: 0;
+}
+
+.deliveryLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.deliveryTooltipWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.deliveryInfoButton {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #aeb8c8;
+  border-radius: 50%;
+  background: #fff;
+  color: #637086;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+.deliveryTooltip {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  transform: translateY(-50%) translateX(6px);
+  background: #1f2937;
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  padding: 8px 10px;
+  border-radius: 8px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 10;
+}
+
+.deliveryTooltip::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  background: #1f2937;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.deliveryTooltipWrap:hover .deliveryTooltip,
+.deliveryTooltipWrap:focus-within .deliveryTooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+}
+
+.totalRow {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #e7ebf2;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.orderButton {
+  width: 100%;
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: #111827;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 1024px) {
+  .cartLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rightPanel {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .cartSection {
+    width: calc(100% - 24px);
+    margin: 24px auto 56px;
+  }
+
+  .leftPanel {
+    padding: 16px;
+  }
+
+  .sectionTitle {
+    font-size: 24px;
+  }
+
+  .cartItem {
+    grid-template-columns: 24px 84px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .thumbnailLink {
+    width: 84px;
+    height: 84px;
+  }
+
+  .itemPriceColumn {
+    grid-column: 2 / 4;
+    min-height: 0;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .salePriceText {
+    font-size: 16px;
+  }
+
+  .itemActionColumn {
+    grid-column: 2 / 4;
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+}

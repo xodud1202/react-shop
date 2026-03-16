@@ -334,14 +334,9 @@ export default function ShopHeader({ initialCategoryTree, initialBrands, isLogge
                   <Link className={styles.iconButton} href="/mypage/wish" aria-label="찜">
                     <i className="fa-regular fa-heart" />
                   </Link>
-                  <button
-                    type="button"
-                    className={styles.iconButton}
-                    onClick={() => handlePlaceholderClick("장바구니")}
-                    aria-label="장바구니"
-                  >
+                  <Link className={styles.iconButton} href="/cart" aria-label="장바구니">
                     <i className="fa-solid fa-bag-shopping" />
-                  </button>
+                  </Link>
                   <Link className={styles.iconButton} href="/mypage/main" aria-label="마이페이지">
                     <i className="fa-regular fa-user" />
                   </Link>
