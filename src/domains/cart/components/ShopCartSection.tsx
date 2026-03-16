@@ -1,12 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FocusEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getShopCartDeleteAllPath, getShopCartDeletePath, getShopCartOptionUpdatePath } from "@/domains/cart/api/cartServerApi";
-import type { ShopCartItem, ShopCartPageResponse, ShopCartSiteInfo, ShopCartSizeOption } from "@/domains/cart/types";
+import {
+  createDefaultShopCartCouponEstimateResponse,
+  getShopCartCouponEstimatePath,
+  getShopCartDeleteAllPath,
+  getShopCartDeletePath,
+  getShopCartOptionUpdatePath,
+  normalizeShopCartCouponEstimateResponse,
+} from "@/domains/cart/api/cartServerApi";
+import type {
+  ShopCartCouponEstimateRequest,
+  ShopCartCouponEstimateResponse,
+  ShopCartItem,
+  ShopCartPageResponse,
+  ShopCartSiteInfo,
+  ShopCartSizeOption,
+} from "@/domains/cart/types";
 import { buildLoginFormPath } from "@/domains/login/utils/loginRedirectUtils";
 import styles from "./ShopCartSection.module.css";
 
@@ -137,6 +151,16 @@ function formatDiscountAmount(discountAmt: number): string {
   return `-${formatPrice(safeDiscountAmt)}원`;
 }
 
+// 총 결제금액에 예상 쿠폰 할인 금액을 반영한 표시 금액을 계산합니다.
+function resolveExpectedTotalPayAmt(totalPayAmt: number, expectedCouponDiscountAmt: number): number {
+  // 총 결제금액과 예상 쿠폰 할인 금액을 0 이상 정수로 보정합니다.
+  const safeTotalPayAmt = normalizeNonNegativeNumber(totalPayAmt);
+  const safeExpectedCouponDiscountAmt = normalizeNonNegativeNumber(expectedCouponDiscountAmt);
+
+  // 예상 할인 금액이 총 결제금액보다 커도 음수로 내려가지 않도록 보정합니다.
+  return Math.max(safeTotalPayAmt - safeExpectedCouponDiscountAmt, 0);
+}
+
 // 장바구니 행의 Draft 옵션이 원본과 다른지 확인합니다.
 function isChangedCartItemOption(cartItem: ShopCartItem, draft: ShopCartOptionDraft): boolean {
   const originSizeId = cartItem.sizeId.trim();
@@ -161,6 +185,16 @@ function buildDeletePayload(cartList: ShopCartItem[]): ShopCartDeleteRequestPayl
   };
 }
 
+// 장바구니 선택 상품 목록을 예상 할인 계산 요청 payload로 변환합니다.
+function buildCouponEstimateRequest(selectedCartList: ShopCartItem[]): ShopCartCouponEstimateRequest {
+  return {
+    cartItemList: selectedCartList.map((cartItem) => ({
+      goodsId: cartItem.goodsId,
+      sizeId: cartItem.sizeId,
+    })),
+  };
+}
+
 // 장바구니 UI 섹션을 렌더링합니다.
 export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) {
   const router = useRouter();
@@ -173,6 +207,10 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
   const [isAllDeleteSubmitting, setIsAllDeleteSubmitting] = useState(false);
   const [updatingItemKey, setUpdatingItemKey] = useState("");
   const [deletingItemKey, setDeletingItemKey] = useState("");
+  const [couponEstimate, setCouponEstimate] = useState<ShopCartCouponEstimateResponse>(() =>
+    createDefaultShopCartCouponEstimateResponse(),
+  );
+  const [isCouponEstimateLoading, setIsCouponEstimateLoading] = useState(false);
 
   // 서버 응답(cartPageData)이 갱신되면 체크 상태와 Draft 상태를 초기화합니다.
   useEffect(() => {
@@ -203,6 +241,12 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
     [selectedCartList, cartPageData.siteInfo],
   );
 
+  // 총 결제금액에 예상 최대 쿠폰 할인 금액을 반영한 표시 금액을 계산합니다.
+  const expectedTotalPayAmt = useMemo(
+    () => resolveExpectedTotalPayAmt(summaryAmount.totalPayAmt, couponEstimate.expectedMaxDiscountAmt),
+    [couponEstimate.expectedMaxDiscountAmt, summaryAmount.totalPayAmt],
+  );
+
   // 장바구니 행의 Draft 옵션 값을 조회합니다.
   const resolveOptionDraft = (cartItem: ShopCartItem): ShopCartOptionDraft => {
     const cartItemKey = buildCartItemKey(cartItem.goodsId, cartItem.sizeId);
@@ -213,13 +257,73 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
   };
 
   // 401 응답을 공통 처리하고 로그인 이동 여부를 안내합니다.
-  const handleUnauthorizedResponse = (): void => {
+  const handleUnauthorizedResponse = useCallback((): void => {
     // 로그인 이동 여부를 확인하고 returnUrl과 함께 로그인 페이지로 이동합니다.
     const shouldMoveLogin = window.confirm("로그인이 필요한 기능입니다. 로그인하시겠습니까?");
     if (shouldMoveLogin) {
       router.push(buildLoginFormPath(resolveCurrentPagePath()));
     }
-  };
+  }, [router]);
+
+  // 선택 상품 기준 예상 최대 쿠폰 할인 금액을 조회합니다.
+  useEffect(() => {
+    // 선택 상품이 없으면 예상 할인 금액을 즉시 0원으로 초기화합니다.
+    if (selectedCartList.length === 0) {
+      setCouponEstimate(createDefaultShopCartCouponEstimateResponse());
+      setIsCouponEstimateLoading(false);
+      return;
+    }
+
+    // 연속 체크 변경 시 짧은 지연 후 최신 선택 상태 기준으로만 API를 호출합니다.
+    const abortController = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        setIsCouponEstimateLoading(true);
+        const response = await fetch(getShopCartCouponEstimatePath(), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          signal: abortController.signal,
+          body: JSON.stringify(buildCouponEstimateRequest(selectedCartList)),
+        });
+
+        // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
+        const payload = await response.json().catch(() => null);
+
+        // 비로그인/세션만료면 로그인 이동을 안내하고 금액은 0원으로 초기화합니다.
+        if (response.status === 401) {
+          setCouponEstimate(createDefaultShopCartCouponEstimateResponse());
+          handleUnauthorizedResponse();
+          return;
+        }
+
+        // 실패 응답이면 금액을 0원으로 초기화합니다.
+        if (!response.ok) {
+          setCouponEstimate(createDefaultShopCartCouponEstimateResponse());
+          return;
+        }
+
+        // 성공 응답을 예상 할인 계산 응답 형식으로 정규화합니다.
+        setCouponEstimate(normalizeShopCartCouponEstimateResponse(payload));
+      } catch (error) {
+        // AbortError는 무시하고 그 외 오류만 0원으로 초기화합니다.
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        setCouponEstimate(createDefaultShopCartCouponEstimateResponse());
+      } finally {
+        setIsCouponEstimateLoading(false);
+      }
+    }, 200);
+
+    // 다음 선택 상태가 들어오면 이전 타이머와 요청을 취소합니다.
+    return () => {
+      window.clearTimeout(timeoutId);
+      abortController.abort();
+    };
+  }, [handleUnauthorizedResponse, selectedCartList]);
 
   // 상단 전체선택 체크박스 토글을 처리합니다.
   const handleToggleAllCheck = (): void => {
@@ -666,6 +770,10 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
               <dd>{formatDiscountAmount(summaryAmount.discountAmt)}</dd>
             </div>
             <div className={styles.summaryRow}>
+              <dt>예상 최대 쿠폰 할인</dt>
+              <dd>{isCouponEstimateLoading ? "계산중..." : formatDiscountAmount(couponEstimate.expectedMaxDiscountAmt)}</dd>
+            </div>
+            <div className={styles.summaryRow}>
               <dt className={styles.deliveryLabel}>
                 배송비
                 <span className={styles.deliveryTooltipWrap}>
@@ -681,7 +789,7 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
             </div>
             <div className={`${styles.summaryRow} ${styles.totalRow}`}>
               <dt>총 결제금액</dt>
-              <dd>{formatPrice(summaryAmount.totalPayAmt)}원</dd>
+              <dd>{isCouponEstimateLoading ? "계산중..." : `${formatPrice(expectedTotalPayAmt)}원`}</dd>
             </div>
           </dl>
           <button type="button" className={styles.orderButton} onClick={handleOrderSelected}>

@@ -19,6 +19,25 @@ export interface ShopCartItem {
   sizeOptions: ShopCartSizeOption[];
 }
 
+// 장바구니 쿠폰 예상 할인 계산 요청 행 타입입니다.
+export interface ShopCartCouponEstimateItem {
+  goodsId: string;
+  sizeId: string;
+}
+
+// 장바구니 쿠폰 예상 할인 계산 요청 타입입니다.
+export interface ShopCartCouponEstimateRequest {
+  cartItemList: ShopCartCouponEstimateItem[];
+}
+
+// 장바구니 쿠폰 예상 할인 계산 응답 타입입니다.
+export interface ShopCartCouponEstimateResponse {
+  expectedMaxDiscountAmt: number;
+  goodsCouponDiscountAmt: number;
+  cartCouponDiscountAmt: number;
+  deliveryCouponDiscountAmt: number;
+}
+
 // 장바구니 배송비 기준 사이트 정보 타입입니다.
 export interface ShopCartSiteInfo {
   siteId: string;

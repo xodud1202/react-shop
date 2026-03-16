@@ -1,9 +1,20 @@
-import type { ShopCartItem, ShopCartPageResponse, ShopCartSiteInfo, ShopCartSizeOption } from "@/domains/cart/types";
+import type {
+  ShopCartCouponEstimateResponse,
+  ShopCartItem,
+  ShopCartPageResponse,
+  ShopCartSiteInfo,
+  ShopCartSizeOption,
+} from "@/domains/cart/types";
 import { readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
 
 // 장바구니 페이지 API 경로를 반환합니다.
 export function getShopCartPagePath(): string {
   return "/api/shop/cart/page";
+}
+
+// 장바구니 쿠폰 예상 할인 계산 API 경로를 반환합니다.
+export function getShopCartCouponEstimatePath(): string {
+  return "/api/shop/cart/coupon/estimate";
 }
 
 // 장바구니 옵션 변경 API 경로를 반환합니다.
@@ -27,6 +38,27 @@ function normalizeNonNegativeNumber(value: unknown): number {
     return 0;
   }
   return Math.max(Math.floor(value), 0);
+}
+
+// 장바구니 쿠폰 예상 할인 계산 응답 기본값을 생성합니다.
+export function createDefaultShopCartCouponEstimateResponse(): ShopCartCouponEstimateResponse {
+  return {
+    expectedMaxDiscountAmt: 0,
+    goodsCouponDiscountAmt: 0,
+    cartCouponDiscountAmt: 0,
+    deliveryCouponDiscountAmt: 0,
+  };
+}
+
+// 장바구니 쿠폰 예상 할인 계산 응답을 기본값과 함께 정규화합니다.
+export function normalizeShopCartCouponEstimateResponse(rawResponse: unknown): ShopCartCouponEstimateResponse {
+  const source = (rawResponse ?? {}) as Partial<ShopCartCouponEstimateResponse>;
+  return {
+    expectedMaxDiscountAmt: normalizeNonNegativeNumber(source.expectedMaxDiscountAmt),
+    goodsCouponDiscountAmt: normalizeNonNegativeNumber(source.goodsCouponDiscountAmt),
+    cartCouponDiscountAmt: normalizeNonNegativeNumber(source.cartCouponDiscountAmt),
+    deliveryCouponDiscountAmt: normalizeNonNegativeNumber(source.deliveryCouponDiscountAmt),
+  };
 }
 
 // 장바구니 사이즈 옵션 단건을 기본값과 함께 정규화합니다.
