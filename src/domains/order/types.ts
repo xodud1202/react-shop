@@ -127,6 +127,107 @@ export interface ShopOrderDiscountQuoteResponse {
   discountAmount: ShopOrderDiscountAmount;
 }
 
+// 주문서 결제 환경 정보 타입입니다.
+export interface ShopOrderPaymentConfig {
+  clientKey: string;
+  apiVersion: string;
+  successUrlBase: string;
+  failUrlBase: string;
+}
+
+// 주문 고객 기본 정보 타입입니다.
+export interface ShopOrderCustomerInfo {
+  custNo: number;
+  custNm: string;
+  email: string;
+  phoneNumber: string;
+  customerKey: string;
+  deviceGbCd: string;
+  custGradeCd: string;
+}
+
+// 적립 예정 포인트 요약 타입입니다.
+export interface ShopOrderPointSaveSummary {
+  totalExpectedPoint: number;
+  pointSaveRate: number;
+}
+
+// 주문서 결제수단 코드 타입입니다.
+export type ShopOrderPaymentMethodCd = "" | "PAY_METHOD_01" | "PAY_METHOD_02" | "PAY_METHOD_03";
+
+// 주문서 진입 정보 타입입니다.
+export interface ShopOrderEntryInfo {
+  from: "cart" | "goods";
+  goodsId: string;
+  cartIdList: number[];
+}
+
+// 주문서 결제 실패 안내 타입입니다.
+export interface ShopOrderPaymentFailureInfo {
+  payResult: string;
+  code: string;
+  message: string;
+}
+
+// 주문 결제 준비 요청 타입입니다.
+export interface ShopOrderPaymentPrepareRequest {
+  from: string;
+  goodsId: string;
+  cartIdList: number[];
+  addressNm: string;
+  discountSelection: ShopOrderDiscountSelection;
+  pointUseAmt: number;
+  paymentMethodCd: ShopOrderPaymentMethodCd;
+}
+
+// 주문 결제 준비 응답 타입입니다.
+export interface ShopOrderPaymentPrepareResponse {
+  ordNo: string;
+  payNo: number;
+  clientKey: string;
+  method: string;
+  orderId: string;
+  orderName: string;
+  amount: number;
+  customerKey: string;
+  customerName: string;
+  customerEmail: string;
+  customerMobilePhone: string;
+  successUrl: string;
+  failUrl: string;
+}
+
+// 주문 결제 승인 요청 타입입니다.
+export interface ShopOrderPaymentConfirmRequest {
+  payNo: number;
+  ordNo: string;
+  paymentKey: string;
+  amount: number;
+}
+
+// 주문 결제 승인 응답 타입입니다.
+export interface ShopOrderPaymentConfirmResponse {
+  ordNo: string;
+  payNo: number;
+  payMethodCd: ShopOrderPaymentMethodCd;
+  payStatCd: string;
+  ordStatCd: string;
+  orderName: string;
+  amount: number;
+  bankCd: string;
+  bankNo: string;
+  vactHolderNm: string;
+  vactDueDt: string;
+}
+
+// 주문 결제 실패 반영 요청 타입입니다.
+export interface ShopOrderPaymentFailRequest {
+  payNo: number;
+  ordNo: string;
+  code: string;
+  message: string;
+}
+
 // 주문서 페이지 API 응답 타입입니다.
 export interface ShopOrderPageResponse {
   cartList: ShopCartItem[];
@@ -138,4 +239,7 @@ export interface ShopOrderPageResponse {
   couponOption: ShopOrderCouponOption;
   discountSelection: ShopOrderDiscountSelection;
   discountAmount: ShopOrderDiscountAmount;
+  paymentConfig: ShopOrderPaymentConfig;
+  customerInfo: ShopOrderCustomerInfo;
+  pointSaveSummary: ShopOrderPointSaveSummary;
 }

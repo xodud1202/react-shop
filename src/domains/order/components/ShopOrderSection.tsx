@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import type { ShopCartItem, ShopCartSiteInfo } from "@/domains/cart/types";
 import {
   getShopOrderDiscountQuotePath,
+  getShopOrderPaymentPreparePath,
   normalizeShopOrderDiscountQuoteResponse,
+  normalizeShopOrderPaymentPrepareResponse,
 } from "@/domains/order/api/orderApi";
 import ShopOrderAddressRegisterLayer from "@/domains/order/components/ShopOrderAddressRegisterLayer";
 import ShopOrderAddressSelectLayer from "@/domains/order/components/ShopOrderAddressSelectLayer";
@@ -15,8 +17,12 @@ import type {
   ShopOrderAddressSaveResponse,
   ShopOrderDiscountAmount,
   ShopOrderDiscountSelection,
+  ShopOrderEntryInfo,
   ShopOrderPageResponse,
+  ShopOrderPaymentFailureInfo,
+  ShopOrderPaymentMethodCd,
 } from "@/domains/order/types";
+import { requestTossPayment } from "@/domains/order/utils/tossPayments";
 import styles from "./ShopOrderSection.module.css";
 
 interface ShopOrderSummaryAmount {
@@ -30,6 +36,8 @@ interface ShopOrderSummaryAmount {
 
 interface ShopOrderSectionProps {
   orderPageData: ShopOrderPageResponse;
+  entryInfo: ShopOrderEntryInfo;
+  paymentFailureInfo: ShopOrderPaymentFailureInfo;
 }
 
 // 가격 숫자를 천 단위 콤마 문자열로 변환합니다.
@@ -145,7 +153,7 @@ function resolveCouponSelectionSummary(discountSelection: ShopOrderDiscountSelec
 }
 
 // 주문서 섹션 UI를 렌더링합니다.
-export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProps) {
+export default function ShopOrderSection({ orderPageData, entryInfo, paymentFailureInfo }: ShopOrderSectionProps) {
   const [agreed, setAgreed] = useState(false);
   const [addressList, setAddressList] = useState<ShopOrderAddress[]>(orderPageData.addressList);
   const [selectedAddress, setSelectedAddress] = useState<ShopOrderAddress | null>(orderPageData.defaultAddress);
@@ -158,6 +166,8 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
   const [discountAmount, setDiscountAmount] = useState<ShopOrderDiscountAmount>(orderPageData.discountAmount);
   const [showCouponLayer, setShowCouponLayer] = useState(false);
   const [isQuotingDiscount, setIsQuotingDiscount] = useState(false);
+  const [selectedPaymentMethodCd, setSelectedPaymentMethodCd] = useState<ShopOrderPaymentMethodCd>("");
+  const [isPreparingPayment, setIsPreparingPayment] = useState(false);
   const [pointUseAmt, setPointUseAmt] = useState(0);
   const [pointInputValue, setPointInputValue] = useState("");
   const summaryAmount = useMemo(
@@ -165,8 +175,16 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
     [discountAmount, orderPageData.cartList, orderPageData.siteInfo, pointUseAmt],
   );
 
-  // 주문하기 버튼 클릭 시 필수 동의와 배송지 선택 여부를 확인합니다.
-  const handleOrderButtonClick = (): void => {
+  useEffect(() => {
+    // 결제 실패 복귀 시 서버 메시지를 우선 노출합니다.
+    if (paymentFailureInfo.payResult !== "fail") {
+      return;
+    }
+    window.alert(paymentFailureInfo.message.trim() || "결제가 완료되지 않았습니다. 다시 시도해주세요.");
+  }, [paymentFailureInfo.code, paymentFailureInfo.message, paymentFailureInfo.payResult]);
+
+  // 주문하기 버튼 클릭 시 결제 준비 후 Toss 결제창을 실행합니다.
+  const handleOrderButtonClick = async (): Promise<void> => {
     if (!agreed) {
       window.alert("구매 동의 후 주문할 수 있습니다.");
       return;
@@ -175,7 +193,56 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
       window.alert("배송지를 선택해주세요.");
       return;
     }
-    window.alert("주문 서비스는 준비중입니다.");
+    if (selectedPaymentMethodCd === "") {
+      window.alert("결제수단을 선택해주세요.");
+      return;
+    }
+
+    try {
+      setIsPreparingPayment(true);
+      const response = await fetch(getShopOrderPaymentPreparePath(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          from: entryInfo.from,
+          goodsId: entryInfo.goodsId,
+          cartIdList: entryInfo.cartIdList,
+          addressNm: selectedAddress.addressNm,
+          discountSelection,
+          pointUseAmt,
+          paymentMethodCd: selectedPaymentMethodCd,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      // 로그인 세션이 만료되면 안내 문구를 우선 노출합니다.
+      if (response.status === 401) {
+        window.alert("로그인이 필요합니다.");
+        return;
+      }
+
+      // 서버 검증 실패 시 서버 메시지를 우선 노출합니다.
+      if (!response.ok) {
+        const message = payload && typeof payload === "object" && "message" in payload ? String(payload.message ?? "") : "";
+        window.alert(message || "주문 결제 준비에 실패했습니다.");
+        return;
+      }
+
+      // 결제 준비 결과를 정규화한 뒤 Toss 결제창을 실행합니다.
+      const paymentPrepareResponse = normalizeShopOrderPaymentPrepareResponse(payload);
+      if (paymentPrepareResponse.payNo < 1 || paymentPrepareResponse.orderId.trim() === "") {
+        window.alert("주문 결제 준비에 실패했습니다.");
+        return;
+      }
+      await requestTossPayment(paymentPrepareResponse);
+    } catch {
+      window.alert("결제 연결에 실패했습니다.");
+    } finally {
+      setIsPreparingPayment(false);
+    }
   };
 
   // 배송지 선택 레이어를 엽니다.
@@ -471,6 +538,39 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
                 <strong className={styles.benefitAmountValue}>{formatDiscountPrice(pointUseAmt)}</strong>
               </div>
             </div>
+
+            <div className={styles.benefitCard}>
+              <div className={styles.benefitHeaderRow}>
+                <div>
+                  <p className={styles.benefitTitle}>결제수단</p>
+                  <p className={styles.benefitDescription}>원하시는 결제수단을 선택한 뒤 주문하기를 눌러주세요.</p>
+                </div>
+              </div>
+
+              <div className={styles.paymentMethodGroup}>
+                <button
+                  type="button"
+                  className={`${styles.paymentMethodButton} ${selectedPaymentMethodCd === "PAY_METHOD_01" ? styles.paymentMethodButtonActive : ""}`}
+                  onClick={() => setSelectedPaymentMethodCd("PAY_METHOD_01")}
+                >
+                  신용카드
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.paymentMethodButton} ${selectedPaymentMethodCd === "PAY_METHOD_02" ? styles.paymentMethodButtonActive : ""}`}
+                  onClick={() => setSelectedPaymentMethodCd("PAY_METHOD_02")}
+                >
+                  무통장입금
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.paymentMethodButton} ${selectedPaymentMethodCd === "PAY_METHOD_03" ? styles.paymentMethodButtonActive : ""}`}
+                  onClick={() => setSelectedPaymentMethodCd("PAY_METHOD_03")}
+                >
+                  퀵계좌이체
+                </button>
+              </div>
+            </div>
           </section>
         </div>
 
@@ -515,10 +615,12 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
           <button
             type="button"
             className={styles.orderButton}
-            onClick={handleOrderButtonClick}
-            disabled={!agreed || orderPageData.cartList.length === 0 || !selectedAddress}
+            onClick={() => {
+              void handleOrderButtonClick();
+            }}
+            disabled={!agreed || orderPageData.cartList.length === 0 || !selectedAddress || selectedPaymentMethodCd === "" || isPreparingPayment}
           >
-            주문하기
+            {isPreparingPayment ? "결제 연결중..." : "주문하기"}
           </button>
         </aside>
       </div>

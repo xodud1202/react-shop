@@ -21,3 +21,32 @@ export function buildShopOrderPath(cartIdList: readonly number[], goodsId?: stri
   const queryString = searchParams.toString();
   return queryString === "" ? "/order" : `/order?${queryString}`;
 }
+
+// 결제 실패 메시지를 포함한 주문서 복귀 경로를 생성합니다.
+export function buildShopOrderRetryPath(
+  cartIdList: readonly number[],
+  goodsId?: string,
+  failureInfo?: { code?: string; message?: string },
+): string {
+  const normalizedCartIdList = normalizeOrderCartIdList(cartIdList);
+  const searchParams = new URLSearchParams();
+  if (goodsId && goodsId.trim() !== "") {
+    searchParams.set("from", "goods");
+    searchParams.set("goodsId", goodsId.trim());
+  } else {
+    searchParams.set("from", "cart");
+  }
+  normalizedCartIdList.forEach((cartId) => {
+    searchParams.append("cartId", String(cartId));
+  });
+  if (failureInfo && ((failureInfo.code ?? "").trim() !== "" || (failureInfo.message ?? "").trim() !== "")) {
+    searchParams.set("payResult", "fail");
+    if ((failureInfo.code ?? "").trim() !== "") {
+      searchParams.set("code", failureInfo.code!.trim());
+    }
+    if ((failureInfo.message ?? "").trim() !== "") {
+      searchParams.set("message", failureInfo.message!.trim());
+    }
+  }
+  return `/order?${searchParams.toString()}`;
+}

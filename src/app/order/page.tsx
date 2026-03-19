@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { fetchShopOrderPageServerData } from "@/domains/order/api/orderServerApi";
 import ShopOrderInvalidEntryHandler from "@/domains/order/components/ShopOrderInvalidEntryHandler";
 import ShopOrderSection from "@/domains/order/components/ShopOrderSection";
+import type { ShopOrderEntryInfo, ShopOrderPaymentFailureInfo } from "@/domains/order/types";
 import { buildLoginFormPath } from "@/domains/login/utils/loginRedirectUtils";
 import { buildForwardCookieHeader } from "@/shared/server/shopCookieHeader";
 
@@ -16,6 +17,31 @@ function resolveGoodsId(rawGoodsId: string | string[] | undefined): string {
     return typeof rawGoodsId[0] === "string" ? rawGoodsId[0] : "";
   }
   return typeof rawGoodsId === "string" ? rawGoodsId : "";
+}
+
+// 검색 파라미터에서 주문 진입 출처를 추출합니다.
+function resolveOrderFrom(rawFrom: string | string[] | undefined, goodsId: string): "cart" | "goods" {
+  const fromValue = Array.isArray(rawFrom) ? rawFrom[0] : rawFrom;
+  if (fromValue === "goods" || goodsId.trim() !== "") {
+    return "goods";
+  }
+  return "cart";
+}
+
+// 검색 파라미터에서 결제 실패 정보를 추출합니다.
+function resolvePaymentFailureInfo(
+  rawPayResult: string | string[] | undefined,
+  rawCode: string | string[] | undefined,
+  rawMessage: string | string[] | undefined,
+): ShopOrderPaymentFailureInfo {
+  const payResult = Array.isArray(rawPayResult) ? rawPayResult[0] ?? "" : rawPayResult ?? "";
+  const code = Array.isArray(rawCode) ? rawCode[0] ?? "" : rawCode ?? "";
+  const message = Array.isArray(rawMessage) ? rawMessage[0] ?? "" : rawMessage ?? "";
+  return {
+    payResult,
+    code,
+    message,
+  };
 }
 
 // 검색 파라미터에서 반복 cartId 값을 추출합니다.
@@ -47,7 +73,13 @@ export default async function ShopOrderPage({ searchParams }: ShopOrderPageProps
   // URL 쿼리에서 goodsId와 cartId 목록을 추출합니다.
   const resolvedSearchParams = searchParams ? await Promise.resolve(searchParams) : {};
   const goodsId = resolveGoodsId(resolvedSearchParams.goodsId);
+  const from = resolveOrderFrom(resolvedSearchParams.from, goodsId);
   const cartIdList = resolveCartIdList(resolvedSearchParams.cartId);
+  const paymentFailureInfo = resolvePaymentFailureInfo(
+    resolvedSearchParams.payResult,
+    resolvedSearchParams.code,
+    resolvedSearchParams.message,
+  );
   if (cartIdList.length === 0) {
     return <ShopOrderInvalidEntryHandler goodsId={goodsId} />;
   }
@@ -67,5 +99,10 @@ export default async function ShopOrderPage({ searchParams }: ShopOrderPageProps
   if (!orderPageResult.ok) {
     return <ShopOrderInvalidEntryHandler goodsId={goodsId} />;
   }
-  return <ShopOrderSection orderPageData={orderPageResult.data} />;
+  const entryInfo: ShopOrderEntryInfo = {
+    from,
+    goodsId,
+    cartIdList,
+  };
+  return <ShopOrderSection orderPageData={orderPageResult.data} entryInfo={entryInfo} paymentFailureInfo={paymentFailureInfo} />;
 }

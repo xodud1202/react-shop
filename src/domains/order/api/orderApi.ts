@@ -11,12 +11,17 @@ import type {
   ShopOrderAddressSearchResponse,
   ShopOrderCouponItem,
   ShopOrderCouponOption,
+  ShopOrderCustomerInfo,
   ShopOrderDiscountAmount,
   ShopOrderDiscountQuoteResponse,
   ShopOrderDiscountSelection,
   ShopOrderGoodsCouponGroup,
   ShopOrderGoodsCouponSelection,
+  ShopOrderPaymentConfig,
+  ShopOrderPaymentConfirmResponse,
+  ShopOrderPaymentPrepareResponse,
   ShopOrderPageResponse,
+  ShopOrderPointSaveSummary,
 } from "@/domains/order/types";
 
 // 숫자 값을 0 이상 정수로 보정합니다.
@@ -64,6 +69,21 @@ export function getShopOrderAddressUpdatePath(): string {
 // 주문서 할인 재계산 API 경로를 반환합니다.
 export function getShopOrderDiscountQuotePath(): string {
   return "/api/shop/order/discount/quote";
+}
+
+// 주문 결제 준비 API 경로를 반환합니다.
+export function getShopOrderPaymentPreparePath(): string {
+  return "/api/shop/order/payment/prepare";
+}
+
+// 주문 결제 승인 API 경로를 반환합니다.
+export function getShopOrderPaymentConfirmPath(): string {
+  return "/api/shop/order/payment/confirm";
+}
+
+// 주문 결제 실패 반영 API 경로를 반환합니다.
+export function getShopOrderPaymentFailPath(): string {
+  return "/api/shop/order/payment/fail";
 }
 
 // 주문서 배송지 단건을 기본값과 함께 정규화합니다.
@@ -156,6 +176,40 @@ function normalizeShopOrderDiscountAmount(rawAmount: unknown): ShopOrderDiscount
     deliveryCouponDiscountAmt: normalizeNonNegativeNumber(source.deliveryCouponDiscountAmt),
     couponDiscountAmt: normalizeNonNegativeNumber(source.couponDiscountAmt),
     maxPointUseAmt: normalizeNonNegativeNumber(source.maxPointUseAmt),
+  };
+}
+
+// 주문서 결제 환경 정보를 기본값과 함께 정규화합니다.
+function normalizeShopOrderPaymentConfig(rawConfig: unknown): ShopOrderPaymentConfig {
+  const source = (rawConfig ?? {}) as Partial<ShopOrderPaymentConfig>;
+  return {
+    clientKey: normalizeString(source.clientKey),
+    apiVersion: normalizeString(source.apiVersion),
+    successUrlBase: normalizeString(source.successUrlBase),
+    failUrlBase: normalizeString(source.failUrlBase),
+  };
+}
+
+// 주문 고객 기본 정보를 기본값과 함께 정규화합니다.
+function normalizeShopOrderCustomerInfo(rawCustomerInfo: unknown): ShopOrderCustomerInfo {
+  const source = (rawCustomerInfo ?? {}) as Partial<ShopOrderCustomerInfo>;
+  return {
+    custNo: normalizeNonNegativeNumber(source.custNo),
+    custNm: normalizeString(source.custNm),
+    email: normalizeString(source.email),
+    phoneNumber: normalizeString(source.phoneNumber),
+    customerKey: normalizeString(source.customerKey),
+    deviceGbCd: normalizeString(source.deviceGbCd),
+    custGradeCd: normalizeString(source.custGradeCd),
+  };
+}
+
+// 적립 예정 포인트 요약 정보를 기본값과 함께 정규화합니다.
+function normalizeShopOrderPointSaveSummary(rawSummary: unknown): ShopOrderPointSaveSummary {
+  const source = (rawSummary ?? {}) as Partial<ShopOrderPointSaveSummary>;
+  return {
+    totalExpectedPoint: normalizeNonNegativeNumber(source.totalExpectedPoint),
+    pointSaveRate: normalizeNonNegativeNumber(source.pointSaveRate),
   };
 }
 
@@ -261,6 +315,25 @@ export function createDefaultShopOrderPageResponse(): ShopOrderPageResponse {
       couponDiscountAmt: 0,
       maxPointUseAmt: 0,
     },
+    paymentConfig: {
+      clientKey: "",
+      apiVersion: "",
+      successUrlBase: "",
+      failUrlBase: "",
+    },
+    customerInfo: {
+      custNo: 0,
+      custNm: "",
+      email: "",
+      phoneNumber: "",
+      customerKey: "",
+      deviceGbCd: "",
+      custGradeCd: "",
+    },
+    pointSaveSummary: {
+      totalExpectedPoint: 0,
+      pointSaveRate: 0,
+    },
   };
 }
 
@@ -281,6 +354,9 @@ export function normalizeShopOrderPageResponse(rawResponse: unknown): ShopOrderP
     couponOption: normalizeShopOrderCouponOption(source.couponOption),
     discountSelection: normalizeShopOrderDiscountSelection(source.discountSelection),
     discountAmount: normalizeShopOrderDiscountAmount(source.discountAmount),
+    paymentConfig: normalizeShopOrderPaymentConfig(source.paymentConfig),
+    customerInfo: normalizeShopOrderCustomerInfo(source.customerInfo),
+    pointSaveSummary: normalizeShopOrderPointSaveSummary(source.pointSaveSummary),
   };
 }
 
@@ -308,5 +384,43 @@ export function normalizeShopOrderDiscountQuoteResponse(rawResponse: unknown): S
   return {
     discountSelection: normalizeShopOrderDiscountSelection(source.discountSelection),
     discountAmount: normalizeShopOrderDiscountAmount(source.discountAmount),
+  };
+}
+
+// 주문 결제 준비 응답을 기본값과 함께 정규화합니다.
+export function normalizeShopOrderPaymentPrepareResponse(rawResponse: unknown): ShopOrderPaymentPrepareResponse {
+  const source = (rawResponse ?? {}) as Partial<ShopOrderPaymentPrepareResponse>;
+  return {
+    ordNo: normalizeString(source.ordNo),
+    payNo: normalizeNonNegativeNumber(source.payNo),
+    clientKey: normalizeString(source.clientKey),
+    method: normalizeString(source.method),
+    orderId: normalizeString(source.orderId),
+    orderName: normalizeString(source.orderName),
+    amount: normalizeNonNegativeNumber(source.amount),
+    customerKey: normalizeString(source.customerKey),
+    customerName: normalizeString(source.customerName),
+    customerEmail: normalizeString(source.customerEmail),
+    customerMobilePhone: normalizeString(source.customerMobilePhone),
+    successUrl: normalizeString(source.successUrl),
+    failUrl: normalizeString(source.failUrl),
+  };
+}
+
+// 주문 결제 승인 응답을 기본값과 함께 정규화합니다.
+export function normalizeShopOrderPaymentConfirmResponse(rawResponse: unknown): ShopOrderPaymentConfirmResponse {
+  const source = (rawResponse ?? {}) as Partial<ShopOrderPaymentConfirmResponse>;
+  return {
+    ordNo: normalizeString(source.ordNo),
+    payNo: normalizeNonNegativeNumber(source.payNo),
+    payMethodCd: normalizeString(source.payMethodCd) as ShopOrderPaymentConfirmResponse["payMethodCd"],
+    payStatCd: normalizeString(source.payStatCd),
+    ordStatCd: normalizeString(source.ordStatCd),
+    orderName: normalizeString(source.orderName),
+    amount: normalizeNonNegativeNumber(source.amount),
+    bankCd: normalizeString(source.bankCd),
+    bankNo: normalizeString(source.bankNo),
+    vactHolderNm: normalizeString(source.vactHolderNm),
+    vactDueDt: normalizeString(source.vactDueDt),
   };
 }
