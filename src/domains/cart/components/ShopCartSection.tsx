@@ -22,6 +22,7 @@ import type {
   ShopCartSizeOption,
 } from "@/domains/cart/types";
 import { buildLoginFormPath } from "@/domains/login/utils/loginRedirectUtils";
+import { buildShopOrderPath } from "@/domains/order/utils/orderPathUtils";
 import styles from "./ShopCartSection.module.css";
 
 interface ShopCartSectionProps {
@@ -605,12 +606,16 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
 
   // 행 단위 주문하기 버튼 동작을 처리합니다.
   const handleOrderSingle = (cartItem: ShopCartItem): void => {
-    // 상품 행 단건 주문 검증 후 준비중 안내를 노출합니다.
+    // 상품 행 단건 주문 검증 후 주문서 화면으로 이동합니다.
     if (normalizeQuantity(cartItem.qty) < 1) {
       window.alert("주문할 수량을 확인해주세요.");
       return;
     }
-    window.alert("주문 서비스는 준비중입니다.");
+    if (cartItem.cartId < 1) {
+      window.alert("주문 정보를 확인해주세요.");
+      return;
+    }
+    router.push(buildShopOrderPath([cartItem.cartId]));
   };
 
   // 우측 가격표 주문하기 버튼 동작을 처리합니다.
@@ -620,7 +625,14 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
       window.alert("주문할 상품을 선택해주세요.");
       return;
     }
-    window.alert("주문 서비스는 준비중입니다.");
+    const orderCartIdList = selectedCartList
+      .map((cartItem) => cartItem.cartId)
+      .filter((cartId) => Number.isFinite(cartId) && cartId > 0);
+    if (orderCartIdList.length === 0) {
+      window.alert("주문 정보를 확인해주세요.");
+      return;
+    }
+    router.push(buildShopOrderPath(orderCartIdList));
   };
 
   return (

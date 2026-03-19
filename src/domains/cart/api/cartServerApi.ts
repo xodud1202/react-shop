@@ -72,12 +72,14 @@ function normalizeShopCartSizeOption(rawOption: unknown): ShopCartSizeOption {
 }
 
 // 장바구니 상품 행 단건을 기본값과 함께 정규화합니다.
-function normalizeShopCartItem(rawItem: unknown): ShopCartItem {
+export function normalizeShopCartItem(rawItem: unknown): ShopCartItem {
   const source = (rawItem ?? {}) as Partial<ShopCartItem>;
   const sizeOptions = Array.isArray(source.sizeOptions) ? source.sizeOptions.map(normalizeShopCartSizeOption) : [];
   return {
+    cartId: normalizeNonNegativeNumber(source.cartId),
     custNo: normalizeNonNegativeNumber(source.custNo),
     goodsId: typeof source.goodsId === "string" ? source.goodsId : "",
+    brandNm: typeof source.brandNm === "string" ? source.brandNm : "",
     goodsNm: typeof source.goodsNm === "string" ? source.goodsNm : "",
     sizeId: typeof source.sizeId === "string" ? source.sizeId : "",
     qty: Math.max(normalizeNonNegativeNumber(source.qty), 1),
@@ -90,7 +92,7 @@ function normalizeShopCartItem(rawItem: unknown): ShopCartItem {
 }
 
 // 장바구니 배송비 기준 정보를 기본값과 함께 정규화합니다.
-function normalizeShopCartSiteInfo(rawSiteInfo: unknown): ShopCartSiteInfo {
+export function normalizeShopCartSiteInfo(rawSiteInfo: unknown): ShopCartSiteInfo {
   const source = (rawSiteInfo ?? {}) as Partial<ShopCartSiteInfo>;
   return {
     siteId: typeof source.siteId === "string" ? source.siteId : "",
@@ -100,7 +102,7 @@ function normalizeShopCartSiteInfo(rawSiteInfo: unknown): ShopCartSiteInfo {
 }
 
 // 장바구니 기본 응답값을 생성합니다.
-function createDefaultShopCartPageResponse(): ShopCartPageResponse {
+export function createDefaultShopCartPageResponse(): ShopCartPageResponse {
   return {
     cartList: [],
     cartCount: 0,
@@ -109,6 +111,17 @@ function createDefaultShopCartPageResponse(): ShopCartPageResponse {
       deliveryFee: 0,
       deliveryFeeLimit: 0,
     },
+  };
+}
+
+// 장바구니 페이지 응답을 기본값과 함께 정규화합니다.
+export function normalizeShopCartPageResponse(rawResponse: unknown): ShopCartPageResponse {
+  const source = (rawResponse ?? {}) as Partial<ShopCartPageResponse>;
+  const normalizedCartList = Array.isArray(source.cartList) ? source.cartList.map(normalizeShopCartItem) : [];
+  return {
+    cartList: normalizedCartList,
+    cartCount: normalizeNonNegativeNumber(source.cartCount),
+    siteInfo: normalizeShopCartSiteInfo(source.siteInfo),
   };
 }
 
@@ -124,10 +137,5 @@ export async function fetchShopCartPageServerData(cookieHeader: string): Promise
     return defaultResponse;
   }
 
-  const normalizedCartList = Array.isArray(response.cartList) ? response.cartList.map(normalizeShopCartItem) : [];
-  return {
-    cartList: normalizedCartList,
-    cartCount: normalizeNonNegativeNumber(response.cartCount),
-    siteInfo: normalizeShopCartSiteInfo(response.siteInfo),
-  };
+  return normalizeShopCartPageResponse(response);
 }

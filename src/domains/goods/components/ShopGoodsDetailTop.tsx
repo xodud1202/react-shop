@@ -6,9 +6,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
-import { getShopGoodsCouponDownloadPath } from "@/domains/goods/api/goodsApi";
+import {
+  getShopGoodsCartAddPath,
+  getShopGoodsCouponDownloadPath,
+  getShopGoodsOrderNowPath,
+} from "@/domains/goods/api/goodsApi";
 import type { ShopGoodsDetailResponse, ShopGoodsGroupItem, ShopGoodsImage, ShopGoodsSizeItem } from "@/domains/goods/types";
 import { buildLoginFormPath } from "@/domains/login/utils/loginRedirectUtils";
+import { buildShopOrderPath } from "@/domains/order/utils/orderPathUtils";
 import ShopGoodsCouponDownloadLayer from "@/domains/goods/components/ShopGoodsCouponDownloadLayer";
 import ShopConfirmLayer from "@/shared/components/layer/ShopConfirmLayer";
 import styles from "./ShopGoodsDetailTop.module.css";
@@ -26,6 +31,12 @@ interface ShopGoodsCouponDownloadResult {
   ok: boolean;
   unauthorized: boolean;
   message: string;
+}
+
+interface ShopGoodsOrderNowResponse {
+  cartId?: number;
+  goodsId?: string;
+  message?: string;
 }
 
 const GOODS_DETAIL_COLLAPSE_HEIGHT = 500;
@@ -222,6 +233,8 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
   const [isDownloadAllSubmitting, setIsDownloadAllSubmitting] = useState<boolean>(false);
   // 장바구니 등록 API 요청 중 상태를 관리합니다.
   const [isCartSubmitting, setIsCartSubmitting] = useState<boolean>(false);
+  // 바로구매 장바구니 등록 API 요청 중 상태를 관리합니다.
+  const [isOrderNowSubmitting, setIsOrderNowSubmitting] = useState<boolean>(false);
 
   // 선택된 사이즈명을 계산합니다.
   const selectedSizeLabel = useMemo(
@@ -291,6 +304,7 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
     setDownloadingCouponNo(null);
     setIsDownloadAllSubmitting(false);
     setIsCartSubmitting(false);
+    setIsOrderNowSubmitting(false);
   }, [currentGoodsId]);
 
   // 선택된 사이즈 재고가 변경되면 수량을 유효 범위로 자동 보정합니다.
@@ -693,7 +707,7 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
     try {
       // 장바구니 등록 API를 호출하는 동안 로딩 상태를 설정합니다.
       setIsCartSubmitting(true);
-      const response = await fetch("/api/shop/goods/cart/add", {
+      const response = await fetch(getShopGoodsCartAddPath(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -729,6 +743,74 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
     } finally {
       // 요청 종료 후 로딩 상태를 해제합니다.
       setIsCartSubmitting(false);
+    }
+  };
+
+  // 바로구매 버튼 클릭 시 O 구분 장바구니를 만든 뒤 주문서로 이동합니다.
+  const handleOrderNowButtonClick = async (): Promise<void> => {
+    // 중복 요청을 방지하고 필수 선택값을 확인합니다.
+    if (isOrderNowSubmitting) {
+      return;
+    }
+    const targetGoodsId = currentGoodsId.trim();
+    const targetSizeId = selectedSizeId.trim();
+    if (targetGoodsId === "") {
+      window.alert("상품코드를 확인해주세요.");
+      return;
+    }
+    if (targetSizeId === "") {
+      window.alert("사이즈를 선택해주세요.");
+      return;
+    }
+    if (!Number.isFinite(orderQuantity) || orderQuantity < 1) {
+      window.alert("수량을 확인해주세요.");
+      return;
+    }
+
+    try {
+      // 바로구매 장바구니 등록 API를 호출하는 동안 로딩 상태를 설정합니다.
+      setIsOrderNowSubmitting(true);
+      const response = await fetch(getShopGoodsOrderNowPath(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          goodsId: targetGoodsId,
+          sizeId: targetSizeId,
+          qty: orderQuantity,
+        }),
+      });
+
+      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
+      const payload = (await response.json().catch(() => null)) as ShopGoodsOrderNowResponse | null;
+
+      // 비로그인/세션만료면 로그인 확인 레이어를 노출합니다.
+      if (response.status === 401) {
+        setShowLoginConfirmLayer(true);
+        return;
+      }
+
+      // 실패 응답이면 서버 메시지를 우선 노출합니다.
+      if (!response.ok) {
+        window.alert(payload?.message ?? "바로구매 처리에 실패했습니다.");
+        return;
+      }
+
+      // 생성된 cartId로 주문서 화면으로 이동합니다.
+      const createdCartId = typeof payload?.cartId === "number" && Number.isFinite(payload.cartId) ? payload.cartId : 0;
+      if (createdCartId < 1) {
+        window.alert("주문 정보를 확인해주세요.");
+        return;
+      }
+      router.push(buildShopOrderPath([createdCartId], targetGoodsId));
+    } catch {
+      // 네트워크/예외 오류 시 공통 실패 문구를 노출합니다.
+      window.alert("바로구매 처리에 실패했습니다.");
+    } finally {
+      // 요청 종료 후 로딩 상태를 해제합니다.
+      setIsOrderNowSubmitting(false);
     }
   };
 
@@ -934,12 +1016,17 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
               <button
                 type="button"
                 className={styles.cartButton}
-                disabled={isActionButtonDisabled || isCartSubmitting}
+                disabled={isActionButtonDisabled || isCartSubmitting || isOrderNowSubmitting}
                 onClick={handleCartButtonClick}
               >
                 장바구니
               </button>
-              <button type="button" className={styles.buyButton} disabled={isActionButtonDisabled}>
+              <button
+                type="button"
+                className={styles.buyButton}
+                disabled={isActionButtonDisabled || isCartSubmitting || isOrderNowSubmitting}
+                onClick={() => void handleOrderNowButtonClick()}
+              >
                 바로구매
               </button>
             </div>

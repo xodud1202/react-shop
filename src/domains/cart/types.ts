@@ -7,8 +7,10 @@ export interface ShopCartSizeOption {
 
 // 장바구니 상품 행 타입입니다.
 export interface ShopCartItem {
+  cartId: number;
   custNo: number;
   goodsId: string;
+  brandNm: string;
   goodsNm: string;
   sizeId: string;
   qty: number;
