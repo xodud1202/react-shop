@@ -2,10 +2,21 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import type { ShopCartItem } from "@/domains/cart/types";
+import type { ShopCartItem, ShopCartSiteInfo } from "@/domains/cart/types";
+import {
+  getShopOrderDiscountQuotePath,
+  normalizeShopOrderDiscountQuoteResponse,
+} from "@/domains/order/api/orderApi";
 import ShopOrderAddressRegisterLayer from "@/domains/order/components/ShopOrderAddressRegisterLayer";
 import ShopOrderAddressSelectLayer from "@/domains/order/components/ShopOrderAddressSelectLayer";
-import type { ShopOrderAddress, ShopOrderAddressSaveResponse, ShopOrderPageResponse } from "@/domains/order/types";
+import ShopOrderCouponLayer from "@/domains/order/components/ShopOrderCouponLayer";
+import type {
+  ShopOrderAddress,
+  ShopOrderAddressSaveResponse,
+  ShopOrderDiscountAmount,
+  ShopOrderDiscountSelection,
+  ShopOrderPageResponse,
+} from "@/domains/order/types";
 import styles from "./ShopOrderSection.module.css";
 
 interface ShopOrderSummaryAmount {
@@ -43,25 +54,47 @@ function normalizeQuantity(value: number): number {
   return Math.max(Math.floor(value), 1);
 }
 
+// 주문 상품 행의 공급가 합계를 계산합니다.
+function resolveCartRowSupplyAmt(cartItem: ShopCartItem): number {
+  return normalizeNonNegativeNumber(cartItem.supplyAmt) * normalizeQuantity(cartItem.qty);
+}
+
+// 주문 상품 행의 판매가 합계를 계산합니다.
+function resolveCartRowSaleAmt(cartItem: ShopCartItem): number {
+  return normalizeNonNegativeNumber(cartItem.saleAmt) * normalizeQuantity(cartItem.qty);
+}
+
+// 현재 주문 상품 판매가 합계 기준 배송비를 계산합니다.
+function resolveDeliveryFee(cartList: ShopCartItem[], siteInfo: ShopCartSiteInfo): number {
+  const totalSaleAmt = cartList.reduce((sum, cartItem) => sum + resolveCartRowSaleAmt(cartItem), 0);
+  const deliveryFee = normalizeNonNegativeNumber(siteInfo.deliveryFee);
+  const deliveryFeeLimit = normalizeNonNegativeNumber(siteInfo.deliveryFeeLimit);
+  if (totalSaleAmt >= deliveryFeeLimit) {
+    return 0;
+  }
+  return deliveryFee;
+}
+
 // 주문서 우측 금액 요약을 계산합니다.
-function resolveOrderSummaryAmount(cartList: ShopCartItem[], deliveryFee: number, deliveryFeeLimit: number): ShopOrderSummaryAmount {
-  const totalSupplyAmt = cartList.reduce((sum, cartItem) => {
-    return sum + normalizeNonNegativeNumber(cartItem.supplyAmt) * normalizeQuantity(cartItem.qty);
-  }, 0);
-  const totalSaleAmt = cartList.reduce((sum, cartItem) => {
-    return sum + normalizeNonNegativeNumber(cartItem.saleAmt) * normalizeQuantity(cartItem.qty);
-  }, 0);
+function resolveOrderSummaryAmount(
+  cartList: ShopCartItem[],
+  siteInfo: ShopCartSiteInfo,
+  discountAmount: ShopOrderDiscountAmount,
+  pointUseAmt: number,
+): ShopOrderSummaryAmount {
+  const totalSupplyAmt = cartList.reduce((sum, cartItem) => sum + resolveCartRowSupplyAmt(cartItem), 0);
+  const totalSaleAmt = cartList.reduce((sum, cartItem) => sum + resolveCartRowSaleAmt(cartItem), 0);
   const goodsDiscountAmt = Math.max(totalSupplyAmt - totalSaleAmt, 0);
-  const resolvedDeliveryFee = totalSaleAmt >= normalizeNonNegativeNumber(deliveryFeeLimit) ? 0 : normalizeNonNegativeNumber(deliveryFee);
-  const couponDiscountAmt = 0;
-  const pointUseAmt = 0;
+  const couponDiscountAmt = normalizeNonNegativeNumber(discountAmount.couponDiscountAmt);
+  const normalizedPointUseAmt = normalizeNonNegativeNumber(pointUseAmt);
+  const deliveryFee = resolveDeliveryFee(cartList, siteInfo);
   return {
     totalSupplyAmt,
     goodsDiscountAmt,
-    deliveryFee: resolvedDeliveryFee,
+    deliveryFee,
     couponDiscountAmt,
-    pointUseAmt,
-    finalPayAmt: Math.max(totalSaleAmt + resolvedDeliveryFee - couponDiscountAmt - pointUseAmt, 0),
+    pointUseAmt: normalizedPointUseAmt,
+    finalPayAmt: Math.max(totalSaleAmt + deliveryFee - couponDiscountAmt - normalizedPointUseAmt, 0),
   };
 }
 
@@ -79,6 +112,38 @@ function formatAddressLine(address: ShopOrderAddress): string {
   return `(${address.postNo}) ${address.baseAddress}`;
 }
 
+// 포인트 입력 문자열에서 숫자만 남기고 정리합니다.
+function sanitizePointInputValue(value: string): string {
+  const digitsOnly = value.replace(/[^\d]/g, "");
+  if (digitsOnly === "") {
+    return "";
+  }
+  return String(normalizeNonNegativeNumber(Number(digitsOnly)));
+}
+
+// 현재 입력한 포인트 사용 금액을 최대 사용 가능 금액 기준으로 보정합니다.
+function clampPointUseAmt(pointUseAmt: number, maxPointUseAmt: number): number {
+  return Math.min(normalizeNonNegativeNumber(pointUseAmt), normalizeNonNegativeNumber(maxPointUseAmt));
+}
+
+// 현재 적용된 쿠폰 개수 요약 문구를 생성합니다.
+function resolveCouponSelectionSummary(discountSelection: ShopOrderDiscountSelection): string {
+  const goodsCouponCount = discountSelection.goodsCouponSelectionList.filter((item) => item.custCpnNo !== null).length;
+  const cartCouponCount = discountSelection.cartCouponCustCpnNo !== null ? 1 : 0;
+  const deliveryCouponCount = discountSelection.deliveryCouponCustCpnNo !== null ? 1 : 0;
+  const summaryList: string[] = [];
+  if (goodsCouponCount > 0) {
+    summaryList.push(`상품쿠폰 ${goodsCouponCount}장`);
+  }
+  if (cartCouponCount > 0) {
+    summaryList.push("장바구니 쿠폰 1장");
+  }
+  if (deliveryCouponCount > 0) {
+    summaryList.push("배송비 쿠폰 1장");
+  }
+  return summaryList.length > 0 ? summaryList.join(" / ") : "적용된 쿠폰이 없습니다.";
+}
+
 // 주문서 섹션 UI를 렌더링합니다.
 export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProps) {
   const [agreed, setAgreed] = useState(false);
@@ -89,14 +154,15 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
   const [showAddressRegisterLayer, setShowAddressRegisterLayer] = useState(false);
   const [addressRegisterMode, setAddressRegisterMode] = useState<"create" | "edit">("create");
   const [editingAddress, setEditingAddress] = useState<ShopOrderAddress | null>(null);
+  const [discountSelection, setDiscountSelection] = useState<ShopOrderDiscountSelection>(orderPageData.discountSelection);
+  const [discountAmount, setDiscountAmount] = useState<ShopOrderDiscountAmount>(orderPageData.discountAmount);
+  const [showCouponLayer, setShowCouponLayer] = useState(false);
+  const [isQuotingDiscount, setIsQuotingDiscount] = useState(false);
+  const [pointUseAmt, setPointUseAmt] = useState(0);
+  const [pointInputValue, setPointInputValue] = useState("");
   const summaryAmount = useMemo(
-    () =>
-      resolveOrderSummaryAmount(
-        orderPageData.cartList,
-        orderPageData.siteInfo.deliveryFee,
-        orderPageData.siteInfo.deliveryFeeLimit,
-      ),
-    [orderPageData.cartList, orderPageData.siteInfo.deliveryFee, orderPageData.siteInfo.deliveryFeeLimit],
+    () => resolveOrderSummaryAmount(orderPageData.cartList, orderPageData.siteInfo, discountAmount, pointUseAmt),
+    [discountAmount, orderPageData.cartList, orderPageData.siteInfo, pointUseAmt],
   );
 
   // 주문하기 버튼 클릭 시 필수 동의와 배송지 선택 여부를 확인합니다.
@@ -171,6 +237,83 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
     setEditingAddress(null);
   };
 
+  // 쿠폰 레이어를 엽니다.
+  const handleOpenCouponLayer = (): void => {
+    setShowCouponLayer(true);
+  };
+
+  // 쿠폰 레이어를 닫습니다.
+  const handleCloseCouponLayer = (): void => {
+    if (isQuotingDiscount) {
+      return;
+    }
+    setShowCouponLayer(false);
+  };
+
+  // 포인트 입력값 변경 시 숫자만 반영합니다.
+  const handlePointInputChange = (value: string): void => {
+    const sanitizedValue = sanitizePointInputValue(value);
+    setPointInputValue(sanitizedValue);
+    setPointUseAmt(sanitizedValue === "" ? 0 : normalizeNonNegativeNumber(Number(sanitizedValue)));
+  };
+
+  // 포인트 입력에서 포커스가 빠질 때 최대 사용 가능 금액 기준으로 자동 보정합니다.
+  const handlePointInputBlur = (): void => {
+    const nextPointUseAmt = clampPointUseAmt(
+      pointInputValue === "" ? 0 : normalizeNonNegativeNumber(Number(pointInputValue)),
+      discountAmount.maxPointUseAmt,
+    );
+    setPointUseAmt(nextPointUseAmt);
+    setPointInputValue(nextPointUseAmt > 0 ? String(nextPointUseAmt) : "");
+  };
+
+  // 쿠폰 적용 요청을 백엔드에 전달하고 할인 금액 상태를 갱신합니다.
+  const handleApplyCouponSelection = async (nextSelection: ShopOrderDiscountSelection): Promise<void> => {
+    try {
+      setIsQuotingDiscount(true);
+      const response = await fetch(getShopOrderDiscountQuotePath(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          cartIdList: orderPageData.cartList.map((cartItem) => cartItem.cartId),
+          goodsCouponSelectionList: nextSelection.goodsCouponSelectionList,
+          cartCouponCustCpnNo: nextSelection.cartCouponCustCpnNo,
+          deliveryCouponCustCpnNo: nextSelection.deliveryCouponCustCpnNo,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      // 세션 만료 시 공통 로그인 메시지를 노출합니다.
+      if (response.status === 401) {
+        window.alert("로그인이 필요합니다.");
+        return;
+      }
+
+      // 실패 응답이면 서버 메시지를 우선 노출합니다.
+      if (!response.ok) {
+        const message = payload && typeof payload === "object" && "message" in payload ? String(payload.message ?? "") : "";
+        window.alert(message || "할인 혜택 계산에 실패했습니다.");
+        return;
+      }
+
+      // 정상 응답을 정규화해 할인 상태와 포인트 최대값을 갱신합니다.
+      const normalizedResponse = normalizeShopOrderDiscountQuoteResponse(payload);
+      const nextPointUseAmt = clampPointUseAmt(pointUseAmt, normalizedResponse.discountAmount.maxPointUseAmt);
+      setDiscountSelection(normalizedResponse.discountSelection);
+      setDiscountAmount(normalizedResponse.discountAmount);
+      setPointUseAmt(nextPointUseAmt);
+      setPointInputValue(nextPointUseAmt > 0 ? String(nextPointUseAmt) : "");
+      setShowCouponLayer(false);
+    } catch {
+      window.alert("할인 혜택 계산에 실패했습니다.");
+    } finally {
+      setIsQuotingDiscount(false);
+    }
+  };
+
   return (
     <section className={styles.orderSection}>
       <div className={styles.orderLayout}>
@@ -186,8 +329,8 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
             <ul className={styles.orderItemList}>
               {orderPageData.cartList.map((cartItem) => {
                 const rowQty = normalizeQuantity(cartItem.qty);
-                const rowSupplyAmt = normalizeNonNegativeNumber(cartItem.supplyAmt) * rowQty;
-                const rowSaleAmt = normalizeNonNegativeNumber(cartItem.saleAmt) * rowQty;
+                const rowSupplyAmt = resolveCartRowSupplyAmt(cartItem);
+                const rowSaleAmt = resolveCartRowSaleAmt(cartItem);
                 const showDiscount = rowSupplyAmt > rowSaleAmt;
                 return (
                   <li key={cartItem.cartId} className={styles.orderItem}>
@@ -273,6 +416,62 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
               </div>
             )}
           </section>
+
+          <section className={styles.subSection}>
+            <div className={styles.subSectionHeader}>
+              <h2 className={styles.subSectionTitle}>할인혜택</h2>
+            </div>
+
+            <div className={styles.benefitCard}>
+              <div className={styles.benefitHeaderRow}>
+                <div>
+                  <p className={styles.benefitTitle}>쿠폰 적용</p>
+                  <p className={styles.benefitDescription}>상품쿠폰, 장바구니 쿠폰, 배송비 쿠폰을 각각 선택할 수 있습니다.</p>
+                </div>
+                <button type="button" className={styles.subSectionButton} onClick={handleOpenCouponLayer}>
+                  쿠폰 변경
+                </button>
+              </div>
+
+              <div className={styles.benefitAmountRow}>
+                <span className={styles.benefitAmountLabel}>적용된 쿠폰 할인금액</span>
+                <strong className={styles.benefitAmountValue}>{formatDiscountPrice(discountAmount.couponDiscountAmt)}</strong>
+              </div>
+
+              <p className={styles.benefitDescription}>{resolveCouponSelectionSummary(discountSelection)}</p>
+            </div>
+
+            <div className={styles.benefitCard}>
+              <div className={styles.benefitHeaderRow}>
+                <div>
+                  <p className={styles.benefitTitle}>포인트 사용</p>
+                  <p className={styles.benefitDescription}>
+                    보유 {formatPrice(orderPageData.availablePointAmt)}원 / 최대 {formatPrice(discountAmount.maxPointUseAmt)}원 사용 가능
+                  </p>
+                </div>
+              </div>
+
+              <div className={styles.pointRow}>
+                <label className={styles.pointInputWrap}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className={styles.pointInput}
+                    value={pointInputValue}
+                    onChange={(event) => handlePointInputChange(event.target.value)}
+                    onBlur={handlePointInputBlur}
+                    placeholder="0"
+                  />
+                  <span className={styles.pointInputSuffix}>원</span>
+                </label>
+              </div>
+
+              <div className={styles.benefitAmountRow}>
+                <span className={styles.benefitAmountLabel}>현재 사용 포인트</span>
+                <strong className={styles.benefitAmountValue}>{formatDiscountPrice(pointUseAmt)}</strong>
+              </div>
+            </div>
+          </section>
         </div>
 
         <aside className={styles.rightPanel}>
@@ -341,6 +540,18 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
           initialAddress={editingAddress}
           onSuccess={handleAddressRegisterSuccess}
           onClose={handleCloseAddressRegisterLayer}
+        />
+      ) : null}
+
+      {showCouponLayer ? (
+        <ShopOrderCouponLayer
+          cartList={orderPageData.cartList}
+          siteInfo={orderPageData.siteInfo}
+          couponOption={orderPageData.couponOption}
+          initialSelection={discountSelection}
+          isSubmitting={isQuotingDiscount}
+          onApply={handleApplyCouponSelection}
+          onClose={handleCloseCouponLayer}
         />
       ) : null}
     </section>

@@ -288,6 +288,106 @@
   font-size: 13px;
 }
 
+.benefitCard {
+  border: 1px solid #dbe2ea;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  padding: 20px;
+}
+
+.benefitCard + .benefitCard {
+  margin-top: 14px;
+}
+
+.benefitHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.benefitTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.benefitDescription {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.benefitAmountRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e8edf4;
+}
+
+.benefitAmountLabel {
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.benefitAmountValue {
+  color: #111827;
+  font-size: 18px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.pointRow {
+  margin-top: 18px;
+}
+
+.pointInputWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid #d5dce6;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 0 16px;
+}
+
+.pointInputWrap:focus-within {
+  border-color: #111827;
+}
+
+.pointInput {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 52px;
+  border: none;
+  background: transparent;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.pointInput:focus {
+  outline: none;
+}
+
+.pointInput::placeholder {
+  color: #94a3b8;
+}
+
+.pointInputSuffix {
+  color: #475569;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .rightPanel {
   position: sticky;
   top: 100px;
@@ -446,5 +546,11 @@
   .subSectionButton,
   .addressSelectButton {
     width: 100%;
+  }
+
+  .benefitHeaderRow,
+  .benefitAmountRow {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

@@ -9,6 +9,13 @@ import type {
   ShopOrderAddressSearchCommon,
   ShopOrderAddressSearchItem,
   ShopOrderAddressSearchResponse,
+  ShopOrderCouponItem,
+  ShopOrderCouponOption,
+  ShopOrderDiscountAmount,
+  ShopOrderDiscountQuoteResponse,
+  ShopOrderDiscountSelection,
+  ShopOrderGoodsCouponGroup,
+  ShopOrderGoodsCouponSelection,
   ShopOrderPageResponse,
 } from "@/domains/order/types";
 
@@ -54,6 +61,11 @@ export function getShopOrderAddressUpdatePath(): string {
   return "/api/shop/order/address";
 }
 
+// 주문서 할인 재계산 API 경로를 반환합니다.
+export function getShopOrderDiscountQuotePath(): string {
+  return "/api/shop/order/discount/quote";
+}
+
 // 주문서 배송지 단건을 기본값과 함께 정규화합니다.
 export function normalizeShopOrderAddress(rawAddress: unknown): ShopOrderAddress {
   const source = (rawAddress ?? {}) as Partial<ShopOrderAddress>;
@@ -66,6 +78,84 @@ export function normalizeShopOrderAddress(rawAddress: unknown): ShopOrderAddress
     phoneNumber: normalizeString(source.phoneNumber),
     rsvNm: normalizeString(source.rsvNm),
     defaultYn: normalizeString(source.defaultYn),
+  };
+}
+
+// 주문서 쿠폰 선택 항목을 기본값과 함께 정규화합니다.
+function normalizeShopOrderCouponItem(rawCoupon: unknown): ShopOrderCouponItem {
+  const source = (rawCoupon ?? {}) as Partial<ShopOrderCouponItem>;
+  return {
+    custCpnNo: normalizeNonNegativeNumber(source.custCpnNo),
+    cpnNo: normalizeNonNegativeNumber(source.cpnNo),
+    cpnNm: normalizeString(source.cpnNm),
+    cpnGbCd: normalizeString(source.cpnGbCd),
+    cpnTargetCd: normalizeString(source.cpnTargetCd),
+    cpnDcGbCd: normalizeString(source.cpnDcGbCd),
+    cpnDcVal: normalizeNonNegativeNumber(source.cpnDcVal),
+    cpnUsableStartDt: normalizeString(source.cpnUsableStartDt),
+    cpnUsableEndDt: normalizeString(source.cpnUsableEndDt),
+  };
+}
+
+// 주문서 상품별 상품쿠폰 그룹을 기본값과 함께 정규화합니다.
+function normalizeShopOrderGoodsCouponGroup(rawGroup: unknown): ShopOrderGoodsCouponGroup {
+  const source = (rawGroup ?? {}) as Partial<ShopOrderGoodsCouponGroup>;
+  return {
+    cartId: normalizeNonNegativeNumber(source.cartId),
+    goodsId: normalizeString(source.goodsId),
+    goodsNm: normalizeString(source.goodsNm),
+    sizeId: normalizeString(source.sizeId),
+    couponList: Array.isArray(source.couponList) ? source.couponList.map(normalizeShopOrderCouponItem) : [],
+  };
+}
+
+// 주문서 쿠폰 선택 후보 목록을 기본값과 함께 정규화합니다.
+function normalizeShopOrderCouponOption(rawOption: unknown): ShopOrderCouponOption {
+  const source = (rawOption ?? {}) as Partial<ShopOrderCouponOption>;
+  return {
+    goodsCouponGroupList: Array.isArray(source.goodsCouponGroupList)
+      ? source.goodsCouponGroupList.map(normalizeShopOrderGoodsCouponGroup)
+      : [],
+    cartCouponList: Array.isArray(source.cartCouponList) ? source.cartCouponList.map(normalizeShopOrderCouponItem) : [],
+    deliveryCouponList: Array.isArray(source.deliveryCouponList)
+      ? source.deliveryCouponList.map(normalizeShopOrderCouponItem)
+      : [],
+  };
+}
+
+// 주문서 상품쿠폰 선택 항목을 기본값과 함께 정규화합니다.
+function normalizeShopOrderGoodsCouponSelection(rawSelection: unknown): ShopOrderGoodsCouponSelection {
+  const source = (rawSelection ?? {}) as Partial<ShopOrderGoodsCouponSelection>;
+  const normalizedCustCpnNo = normalizeNonNegativeNumber(source.custCpnNo);
+  return {
+    cartId: normalizeNonNegativeNumber(source.cartId),
+    custCpnNo: normalizedCustCpnNo > 0 ? normalizedCustCpnNo : null,
+  };
+}
+
+// 주문서 쿠폰 선택 상태를 기본값과 함께 정규화합니다.
+function normalizeShopOrderDiscountSelection(rawSelection: unknown): ShopOrderDiscountSelection {
+  const source = (rawSelection ?? {}) as Partial<ShopOrderDiscountSelection>;
+  const normalizedCartCouponCustCpnNo = normalizeNonNegativeNumber(source.cartCouponCustCpnNo);
+  const normalizedDeliveryCouponCustCpnNo = normalizeNonNegativeNumber(source.deliveryCouponCustCpnNo);
+  return {
+    goodsCouponSelectionList: Array.isArray(source.goodsCouponSelectionList)
+      ? source.goodsCouponSelectionList.map(normalizeShopOrderGoodsCouponSelection)
+      : [],
+    cartCouponCustCpnNo: normalizedCartCouponCustCpnNo > 0 ? normalizedCartCouponCustCpnNo : null,
+    deliveryCouponCustCpnNo: normalizedDeliveryCouponCustCpnNo > 0 ? normalizedDeliveryCouponCustCpnNo : null,
+  };
+}
+
+// 주문서 할인 금액 요약을 기본값과 함께 정규화합니다.
+function normalizeShopOrderDiscountAmount(rawAmount: unknown): ShopOrderDiscountAmount {
+  const source = (rawAmount ?? {}) as Partial<ShopOrderDiscountAmount>;
+  return {
+    goodsCouponDiscountAmt: normalizeNonNegativeNumber(source.goodsCouponDiscountAmt),
+    cartCouponDiscountAmt: normalizeNonNegativeNumber(source.cartCouponDiscountAmt),
+    deliveryCouponDiscountAmt: normalizeNonNegativeNumber(source.deliveryCouponDiscountAmt),
+    couponDiscountAmt: normalizeNonNegativeNumber(source.couponDiscountAmt),
+    maxPointUseAmt: normalizeNonNegativeNumber(source.maxPointUseAmt),
   };
 }
 
@@ -153,6 +243,24 @@ export function createDefaultShopOrderPageResponse(): ShopOrderPageResponse {
     siteInfo: cartPage.siteInfo,
     addressList: [],
     defaultAddress: null,
+    availablePointAmt: 0,
+    couponOption: {
+      goodsCouponGroupList: [],
+      cartCouponList: [],
+      deliveryCouponList: [],
+    },
+    discountSelection: {
+      goodsCouponSelectionList: [],
+      cartCouponCustCpnNo: null,
+      deliveryCouponCustCpnNo: null,
+    },
+    discountAmount: {
+      goodsCouponDiscountAmt: 0,
+      cartCouponDiscountAmt: 0,
+      deliveryCouponDiscountAmt: 0,
+      couponDiscountAmt: 0,
+      maxPointUseAmt: 0,
+    },
   };
 }
 
@@ -169,5 +277,36 @@ export function normalizeShopOrderPageResponse(rawResponse: unknown): ShopOrderP
     siteInfo: normalizeShopCartSiteInfo(source.siteInfo),
     addressList: normalizedAddressList,
     defaultAddress: normalizedDefaultAddress,
+    availablePointAmt: normalizeNonNegativeNumber(source.availablePointAmt),
+    couponOption: normalizeShopOrderCouponOption(source.couponOption),
+    discountSelection: normalizeShopOrderDiscountSelection(source.discountSelection),
+    discountAmount: normalizeShopOrderDiscountAmount(source.discountAmount),
+  };
+}
+
+// 주문서 할인 재계산 응답 기본값을 생성합니다.
+export function createDefaultShopOrderDiscountQuoteResponse(): ShopOrderDiscountQuoteResponse {
+  return {
+    discountSelection: {
+      goodsCouponSelectionList: [],
+      cartCouponCustCpnNo: null,
+      deliveryCouponCustCpnNo: null,
+    },
+    discountAmount: {
+      goodsCouponDiscountAmt: 0,
+      cartCouponDiscountAmt: 0,
+      deliveryCouponDiscountAmt: 0,
+      couponDiscountAmt: 0,
+      maxPointUseAmt: 0,
+    },
+  };
+}
+
+// 주문서 할인 재계산 응답을 기본값과 함께 정규화합니다.
+export function normalizeShopOrderDiscountQuoteResponse(rawResponse: unknown): ShopOrderDiscountQuoteResponse {
+  const source = (rawResponse ?? {}) as Partial<ShopOrderDiscountQuoteResponse>;
+  return {
+    discountSelection: normalizeShopOrderDiscountSelection(source.discountSelection),
+    discountAmount: normalizeShopOrderDiscountAmount(source.discountAmount),
   };
 }

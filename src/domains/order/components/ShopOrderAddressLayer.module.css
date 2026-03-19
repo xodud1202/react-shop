@@ -110,6 +110,13 @@
   line-height: 1.6;
 }
 
+.couponHeaderDescription {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .addressList,
 .searchResultList {
   margin: 0;
@@ -258,6 +265,232 @@
 
 .addressActionButton {
   min-width: 92px;
+}
+
+.couponCardSection {
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.couponCardSection + .couponCardSection {
+  margin-top: 16px;
+}
+
+.couponCardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.couponCardTitle {
+  color: #111827;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.couponCardMeta {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.couponGroupList {
+  display: grid;
+  gap: 14px;
+}
+
+.couponGoodsSection {
+  border: 1px solid #dbe2ea;
+  border-radius: 16px;
+  background: #f8fafc;
+  padding: 16px;
+}
+
+.couponGoodsItemCard {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) 132px;
+  gap: 16px;
+  align-items: center;
+}
+
+.couponGoodsThumbnailWrap {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #eef2f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.couponGoodsThumbnailImage {
+  object-fit: cover;
+}
+
+.couponGoodsThumbnailFallback {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.couponGoodsContent {
+  min-width: 0;
+}
+
+.couponGoodsBrand {
+  margin: 0 0 6px;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.couponGoodsName {
+  margin: 0 0 12px;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.couponGoodsMetaList {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.couponGoodsMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 14px;
+}
+
+.couponGoodsMetaRow dt,
+.couponGoodsMetaRow dd {
+  margin: 0;
+}
+
+.couponGoodsMetaRow dt {
+  min-width: 48px;
+  color: #94a3b8;
+}
+
+.couponGoodsPriceColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.couponGoodsSupplyPrice {
+  margin: 0;
+  color: #b5bfcd;
+  font-size: 13px;
+  text-decoration: line-through;
+}
+
+.couponGoodsSalePrice {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.couponSelectBlock {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.couponSelectLabel {
+  display: grid;
+  gap: 8px;
+}
+
+.couponSelectTitle {
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.couponSelect {
+  width: 100%;
+  height: 48px;
+  border: 1px solid #d5dce6;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 0 14px;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.couponSelect:focus {
+  outline: none;
+  border-color: #111827;
+}
+
+.couponOptionList {
+  display: grid;
+  gap: 10px;
+}
+
+.couponOptionLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid #dbe2ea;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.couponOptionLabel input {
+  margin-top: 3px;
+}
+
+.couponOptionBody {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.couponOptionTitle {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.couponOptionValue {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.couponOptionDisabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.couponEmptyText {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .searchForm {
@@ -544,6 +777,17 @@
   .addressActionRow {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .couponGoodsItemCard {
+    grid-template-columns: 88px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .couponGoodsPriceColumn {
+    grid-column: 1 / 3;
+    align-items: flex-start;
+    padding-left: 104px;
   }
 
   .pagination {
