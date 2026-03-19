@@ -1,25 +1,16 @@
 import {
-  createDefaultShopCartPageResponse,
-  normalizeShopCartPageResponse,
-} from "@/domains/cart/api/cartServerApi";
-import type { ShopCartPageResponse } from "@/domains/cart/types";
+  createDefaultShopOrderPageResponse,
+  getShopOrderPagePath,
+  normalizeShopOrderPageResponse,
+} from "@/domains/order/api/orderApi";
+import type { ShopOrderPageResponse } from "@/domains/order/types";
 
 const SHOP_BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3010";
 
 export interface ShopOrderPageServerResult {
   ok: boolean;
   status: number;
-  data: ShopCartPageResponse;
-}
-
-// 주문서 페이지 API 경로를 생성합니다.
-export function getShopOrderPagePath(cartIdList: readonly number[]): string {
-  const searchParams = new URLSearchParams();
-  cartIdList.forEach((cartId) => {
-    searchParams.append("cartId", String(cartId));
-  });
-  const queryString = searchParams.toString();
-  return queryString === "" ? "/api/shop/order/page" : `/api/shop/order/page?${queryString}`;
+  data: ShopOrderPageResponse;
 }
 
 // 주문서 페이지 SSR 데이터를 조회합니다.
@@ -48,14 +39,14 @@ export async function fetchShopOrderPageServerData(
     return {
       ok: response.ok,
       status: response.status,
-      data: response.ok ? normalizeShopCartPageResponse(payload) : createDefaultShopCartPageResponse(),
+      data: response.ok ? normalizeShopOrderPageResponse(payload) : createDefaultShopOrderPageResponse(),
     };
   } catch {
     // 네트워크 오류 시 빈 응답과 500 상태로 반환합니다.
     return {
       ok: false,
       status: 500,
-      data: createDefaultShopCartPageResponse(),
+      data: createDefaultShopOrderPageResponse(),
     };
   }
 }

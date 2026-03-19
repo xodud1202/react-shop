@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import type { ShopCartItem, ShopCartPageResponse } from "@/domains/cart/types";
+import type { ShopCartItem } from "@/domains/cart/types";
+import ShopOrderAddressRegisterLayer from "@/domains/order/components/ShopOrderAddressRegisterLayer";
+import ShopOrderAddressSelectLayer from "@/domains/order/components/ShopOrderAddressSelectLayer";
+import type { ShopOrderAddress, ShopOrderAddressSaveResponse, ShopOrderPageResponse } from "@/domains/order/types";
 import styles from "./ShopOrderSection.module.css";
 
 interface ShopOrderSummaryAmount {
@@ -15,7 +18,7 @@ interface ShopOrderSummaryAmount {
 }
 
 interface ShopOrderSectionProps {
-  orderPageData: ShopCartPageResponse;
+  orderPageData: ShopOrderPageResponse;
 }
 
 // 가격 숫자를 천 단위 콤마 문자열로 변환합니다.
@@ -71,9 +74,21 @@ function formatDiscountPrice(value: number): string {
   return `-${formatPrice(safeValue)}원`;
 }
 
+// 배송지 기본주소 라인을 포맷 문자열로 변환합니다.
+function formatAddressLine(address: ShopOrderAddress): string {
+  return `(${address.postNo}) ${address.baseAddress}`;
+}
+
 // 주문서 섹션 UI를 렌더링합니다.
 export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProps) {
   const [agreed, setAgreed] = useState(false);
+  const [addressList, setAddressList] = useState<ShopOrderAddress[]>(orderPageData.addressList);
+  const [selectedAddress, setSelectedAddress] = useState<ShopOrderAddress | null>(orderPageData.defaultAddress);
+  const [saveAsDefaultOnOrder, setSaveAsDefaultOnOrder] = useState(false);
+  const [showAddressSelectLayer, setShowAddressSelectLayer] = useState(false);
+  const [showAddressRegisterLayer, setShowAddressRegisterLayer] = useState(false);
+  const [addressRegisterMode, setAddressRegisterMode] = useState<"create" | "edit">("create");
+  const [editingAddress, setEditingAddress] = useState<ShopOrderAddress | null>(null);
   const summaryAmount = useMemo(
     () =>
       resolveOrderSummaryAmount(
@@ -84,13 +99,76 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
     [orderPageData.cartList, orderPageData.siteInfo.deliveryFee, orderPageData.siteInfo.deliveryFeeLimit],
   );
 
-  // 주문하기 버튼 클릭 시 1차 범위 안내를 노출합니다.
+  // 주문하기 버튼 클릭 시 필수 동의와 배송지 선택 여부를 확인합니다.
   const handleOrderButtonClick = (): void => {
     if (!agreed) {
       window.alert("구매 동의 후 주문할 수 있습니다.");
       return;
     }
+    if (!selectedAddress) {
+      window.alert("배송지를 선택해주세요.");
+      return;
+    }
     window.alert("주문 서비스는 준비중입니다.");
+  };
+
+  // 배송지 선택 레이어를 엽니다.
+  const handleOpenAddressSelectLayer = (): void => {
+    setShowAddressSelectLayer(true);
+  };
+
+  // 배송지 선택 레이어를 닫습니다.
+  const handleCloseAddressSelectLayer = (): void => {
+    setShowAddressSelectLayer(false);
+  };
+
+  // 배송지 등록 레이어를 엽니다.
+  const handleOpenAddressRegisterLayer = (): void => {
+    setShowAddressSelectLayer(false);
+    setAddressRegisterMode("create");
+    setEditingAddress(null);
+    setShowAddressRegisterLayer(true);
+  };
+
+  // 배송지 수정 레이어를 엽니다.
+  const handleOpenAddressEditLayer = (address: ShopOrderAddress): void => {
+    setShowAddressSelectLayer(false);
+    setAddressRegisterMode("edit");
+    setEditingAddress(address);
+    setShowAddressRegisterLayer(true);
+  };
+
+  // 배송지 등록 레이어를 닫습니다.
+  const handleCloseAddressRegisterLayer = (): void => {
+    setShowAddressRegisterLayer(false);
+    setAddressRegisterMode("create");
+    setEditingAddress(null);
+  };
+
+  // 선택한 배송지를 현재 주문서 화면 상태에 반영합니다.
+  const handleSelectAddress = (address: ShopOrderAddress): void => {
+    setSelectedAddress(address);
+    setShowAddressSelectLayer(false);
+  };
+
+  // 배송지 등록 성공 결과를 주문서 화면 상태에 반영합니다.
+  const handleAddressRegisterSuccess = (result: ShopOrderAddressSaveResponse): void => {
+    const isEditingSelectedAddress = editingAddress !== null && selectedAddress?.addressNm === editingAddress.addressNm;
+    const preservedSelectedAddress =
+      selectedAddress === null ? null : result.addressList.find((address) => address.addressNm === selectedAddress.addressNm) ?? null;
+    const nextSelectedAddress =
+      addressRegisterMode === "edit"
+        ? isEditingSelectedAddress
+          ? result.savedAddress ?? result.defaultAddress ?? preservedSelectedAddress
+          : preservedSelectedAddress ?? result.savedAddress ?? result.defaultAddress ?? null
+        : result.savedAddress ?? result.defaultAddress ?? null;
+    setAddressList(result.addressList);
+    setSelectedAddress(nextSelectedAddress);
+    setSaveAsDefaultOnOrder(false);
+    setShowAddressRegisterLayer(false);
+    setShowAddressSelectLayer(false);
+    setAddressRegisterMode("create");
+    setEditingAddress(null);
   };
 
   return (
@@ -151,6 +229,50 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
               })}
             </ul>
           )}
+
+          <section className={styles.subSection}>
+            <div className={styles.subSectionHeader}>
+              <h2 className={styles.subSectionTitle}>배송지</h2>
+              {selectedAddress ? (
+                <button type="button" className={styles.subSectionButton} onClick={handleOpenAddressSelectLayer}>
+                  배송지 변경
+                </button>
+              ) : null}
+            </div>
+
+            {selectedAddress ? (
+              <>
+                <div className={styles.addressCard}>
+                  <div className={styles.addressTitleRow}>
+                    <strong className={styles.addressAlias}>{selectedAddress.addressNm}</strong>
+                    {selectedAddress.defaultYn === "Y" ? <span className={styles.addressBadge}>기본 배송지</span> : null}
+                  </div>
+                  <p className={styles.addressMeta}>
+                    {selectedAddress.rsvNm} | {selectedAddress.phoneNumber}
+                  </p>
+                  <p className={styles.addressMain}>{formatAddressLine(selectedAddress)}</p>
+                  <p className={styles.addressDetail}>{selectedAddress.detailAddress}</p>
+                </div>
+
+                <label className={styles.addressCheckboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={saveAsDefaultOnOrder}
+                    onChange={(event) => setSaveAsDefaultOnOrder(event.target.checked)}
+                  />
+                  <span>기본 배송지로 저장</span>
+                </label>
+              </>
+            ) : (
+              <div className={styles.addressEmptyState}>
+                <p className={styles.addressEmptyTitle}>배송지를 선택해주세요.</p>
+                <button type="button" className={styles.addressSelectButton} onClick={handleOpenAddressSelectLayer}>
+                  배송지 선택
+                </button>
+                {addressList.length > 0 ? <p className={styles.addressHint}>등록된 배송지 목록에서 선택할 수 있습니다.</p> : null}
+              </div>
+            )}
+          </section>
         </div>
 
         <aside className={styles.rightPanel}>
@@ -195,12 +317,32 @@ export default function ShopOrderSection({ orderPageData }: ShopOrderSectionProp
             type="button"
             className={styles.orderButton}
             onClick={handleOrderButtonClick}
-            disabled={!agreed || orderPageData.cartList.length === 0}
+            disabled={!agreed || orderPageData.cartList.length === 0 || !selectedAddress}
           >
             주문하기
           </button>
         </aside>
       </div>
+
+      {showAddressSelectLayer ? (
+        <ShopOrderAddressSelectLayer
+          addressList={addressList}
+          selectedAddressNm={selectedAddress?.addressNm ?? ""}
+          onSelect={handleSelectAddress}
+          onEdit={handleOpenAddressEditLayer}
+          onOpenRegister={handleOpenAddressRegisterLayer}
+          onClose={handleCloseAddressSelectLayer}
+        />
+      ) : null}
+
+      {showAddressRegisterLayer ? (
+        <ShopOrderAddressRegisterLayer
+          mode={addressRegisterMode}
+          initialAddress={editingAddress}
+          onSuccess={handleAddressRegisterSuccess}
+          onClose={handleCloseAddressRegisterLayer}
+        />
+      ) : null}
     </section>
   );
 }

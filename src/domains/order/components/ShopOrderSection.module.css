@@ -68,11 +68,6 @@
   padding-top: 4px;
 }
 
-.orderItem:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
 .thumbnailWrap {
   position: relative;
   width: 112px;
@@ -158,6 +153,139 @@
   color: #111827;
   font-size: 22px;
   font-weight: 800;
+}
+
+.subSection {
+  margin-top: 28px;
+  padding-top: 28px;
+  border-top: 1px solid #edf2f7;
+}
+
+.subSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.subSectionTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.subSectionButton,
+.addressSelectButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid #d6deea;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.addressCard {
+  border: 1px solid #dbe2ea;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  padding: 20px;
+}
+
+.addressTitleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.addressAlias {
+  color: #111827;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.addressBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.addressMeta,
+.addressMain,
+.addressDetail,
+.addressHint {
+  margin: 0;
+  line-height: 1.7;
+}
+
+.addressMeta {
+  margin-top: 12px;
+  color: #475569;
+  font-size: 14px;
+}
+
+.addressMain {
+  margin-top: 8px;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.addressDetail {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.addressCheckboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.addressEmptyState {
+  border: 1px dashed #d7deea;
+  border-radius: 18px;
+  background: #f8fafc;
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.addressEmptyTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.addressSelectButton {
+  margin-top: 16px;
+}
+
+.addressHint {
+  margin-top: 12px;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .rightPanel {
@@ -279,6 +407,11 @@
     font-size: 24px;
   }
 
+  .subSectionTitle,
+  .summaryTitle {
+    font-size: 20px;
+  }
+
   .orderItem {
     grid-template-columns: 88px minmax(0, 1fr);
     gap: 14px;
@@ -303,5 +436,15 @@
 
   .salePriceText {
     font-size: 20px;
+  }
+
+  .subSectionHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .subSectionButton,
+  .addressSelectButton {
+    width: 100%;
   }
 }
