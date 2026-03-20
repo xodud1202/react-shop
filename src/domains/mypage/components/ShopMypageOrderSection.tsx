@@ -168,7 +168,7 @@ function createOrderStatusCardList(statusSummary: ShopMypageOrderStatusSummary):
   return [
     {
       key: "waitingForDeposit",
-      label: "무통장 입금대기",
+      label: "입금대기",
       iconClassName: "fa-solid fa-building-columns",
       count: statusSummary.waitingForDepositCount,
     },

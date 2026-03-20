@@ -1,0 +1,215 @@
+.detailSection {
+  width: 100%;
+}
+
+.heroHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  padding: 20px 0 28px;
+}
+
+.heroSideSpace {
+  min-width: 0;
+}
+
+.heroTitle {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #111111;
+  text-align: center;
+}
+
+.heroPeriod {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #6b7280;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.htmlSection {
+  margin-bottom: 28px;
+}
+
+.htmlContent {
+  width: 100%;
+  overflow: hidden;
+}
+
+.htmlContent :global(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.tabSection {
+  margin-bottom: 28px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tabScroll {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  scrollbar-width: thin;
+}
+
+.tabButton {
+  flex: 0 0 auto;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.tabButton:hover {
+  border-color: #111111;
+  color: #111111;
+}
+
+.tabButtonActive {
+  border-color: #111111;
+  background: #111111;
+  color: #ffffff;
+}
+
+.tabButton:disabled {
+  cursor: default;
+}
+
+.goodsSection {
+  width: 100%;
+}
+
+.goodsGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.loadingState,
+.emptyState {
+  padding: 72px 16px;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.loadingHint {
+  margin: 20px 0 0;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.moreButtonWrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
+}
+
+.moreButton {
+  min-width: 180px;
+  border: 1px solid #111111;
+  background: #ffffff;
+  color: #111111;
+  border-radius: 999px;
+  padding: 14px 28px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.moreButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 1200px) {
+  .heroTitle {
+    font-size: 30px;
+  }
+
+  .goodsGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 900px) {
+  .heroHeader {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px 0 20px;
+  }
+
+  .heroSideSpace {
+    display: none;
+  }
+
+  .heroTitle {
+    font-size: 24px;
+    text-align: left;
+  }
+
+  .heroPeriod {
+    text-align: left;
+    white-space: normal;
+  }
+
+  .htmlSection {
+    margin-bottom: 20px;
+  }
+
+  .tabSection {
+    margin-bottom: 20px;
+  }
+
+  .tabScroll {
+    gap: 8px;
+    padding-bottom: 10px;
+  }
+
+  .tabButton {
+    padding: 9px 16px;
+    font-size: 13px;
+  }
+
+  .goodsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 14px;
+  }
+
+  .loadingState,
+  .emptyState {
+    padding: 52px 16px;
+    font-size: 14px;
+  }
+
+  .moreButtonWrap {
+    margin-top: 24px;
+  }
+
+  .moreButton {
+    width: 100%;
+    min-width: 0;
+  }
+}

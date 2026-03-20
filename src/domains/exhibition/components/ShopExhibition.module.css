@@ -49,6 +49,12 @@
   min-width: 0;
 }
 
+.exhibitionCardLink {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
 .thumbnailWrap {
   position: relative;
   width: 100%;
@@ -79,6 +85,10 @@
   color: #111111;
   line-height: 1.45;
   word-break: break-word;
+}
+
+.exhibitionCardLink:hover .thumbnailName {
+  color: #ff5a1f;
 }
 
 .emptyState {
@@ -200,4 +210,3 @@
     font-size: 13px;
   }
 }
-

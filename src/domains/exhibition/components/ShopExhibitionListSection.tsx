@@ -38,6 +38,11 @@ function buildExhibitionListHref(pageNo: number): string {
   return `/exhibition/list?${queryParams.toString()}`;
 }
 
+// 기획전 상세 화면 이동 링크를 생성합니다.
+function buildExhibitionDetailHref(exhibitionNo: number): string {
+  return `/exhibition/${encodeURIComponent(String(exhibitionNo))}`;
+}
+
 // 시작/종료 페이지 번호 구간 배열을 생성합니다.
 function createPageNumberRange(startPageNo: number, endPageNo: number): number[] {
   // 페이지 번호 목록을 순차적으로 구성합니다.
@@ -106,20 +111,22 @@ export default function ShopExhibitionListSection({
         <div className={styles.exhibitionGrid}>
           {exhibitionList.map((item) => (
             <article key={`exhibition-${item.exhibitionNo}`} className={styles.exhibitionCard}>
-              <div className={styles.thumbnailWrap}>
-                {item.thumbnailUrl?.trim() !== "" ? (
-                  <Image
-                    src={item.thumbnailUrl}
-                    alt={item.exhibitionNm || "기획전 썸네일"}
-                    fill
-                    sizes="(max-width: 900px) 50vw, (max-width: 1280px) 25vw, 20vw"
-                    className={styles.thumbnailImage}
-                  />
-                ) : (
-                  <div className={styles.thumbnailPlaceholder}>썸네일 준비중</div>
-                )}
-              </div>
-              <p className={styles.thumbnailName}>{item.exhibitionNm || "-"}</p>
+              <Link className={styles.exhibitionCardLink} href={buildExhibitionDetailHref(item.exhibitionNo)}>
+                <div className={styles.thumbnailWrap}>
+                  {item.thumbnailUrl?.trim() !== "" ? (
+                    <Image
+                      src={item.thumbnailUrl}
+                      alt={item.exhibitionNm || "기획전 썸네일"}
+                      fill
+                      sizes="(max-width: 900px) 50vw, (max-width: 1280px) 25vw, 20vw"
+                      className={styles.thumbnailImage}
+                    />
+                  ) : (
+                    <div className={styles.thumbnailPlaceholder}>썸네일 준비중</div>
+                  )}
+                </div>
+                <p className={styles.thumbnailName}>{item.exhibitionNm || "-"}</p>
+              </Link>
             </article>
           ))}
         </div>
@@ -171,4 +178,3 @@ export default function ShopExhibitionListSection({
     </section>
   );
 }
-
