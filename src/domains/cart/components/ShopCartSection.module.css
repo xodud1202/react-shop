@@ -162,6 +162,13 @@
   flex-wrap: wrap;
 }
 
+.stockWarningText {
+  margin: 10px 0 0;
+  color: #c2410c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .optionField {
   display: flex;
   flex-direction: column;
@@ -345,6 +352,11 @@
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.orderButton:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 @media (max-width: 1024px) {

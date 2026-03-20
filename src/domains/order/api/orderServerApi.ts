@@ -10,6 +10,7 @@ const SHOP_BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3010";
 export interface ShopOrderPageServerResult {
   ok: boolean;
   status: number;
+  message: string;
   data: ShopOrderPageResponse;
 }
 
@@ -39,6 +40,10 @@ export async function fetchShopOrderPageServerData(
     return {
       ok: response.ok,
       status: response.status,
+      message:
+        payload && typeof payload === "object" && "message" in payload && typeof payload.message === "string"
+          ? payload.message
+          : "",
       data: response.ok ? normalizeShopOrderPageResponse(payload) : createDefaultShopOrderPageResponse(),
     };
   } catch {
@@ -46,6 +51,7 @@ export async function fetchShopOrderPageServerData(
     return {
       ok: false,
       status: 500,
+      message: "",
       data: createDefaultShopOrderPageResponse(),
     };
   }

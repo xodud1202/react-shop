@@ -18,8 +18,8 @@ function resolveLoginMoveUrl(request: NextRequest) {
   return loginMoveUrl;
 }
 
-// /mypage 하위 경로의 로그인 여부를 확인합니다.
-export function middleware(request: NextRequest) {
+// /mypage 하위 경로의 로그인 여부를 확인하는 프록시를 실행합니다.
+export function proxy(request: NextRequest) {
   // 로그인 쿠키가 있으면 요청을 그대로 통과시킵니다.
   const custNoCookieValue = request.cookies.get("cust_no")?.value ?? "";
   if (custNoCookieValue.trim() !== "") {

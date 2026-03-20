@@ -419,6 +419,7 @@ export function normalizeShopOrderPaymentConfirmResponse(rawResponse: unknown): 
     orderName: normalizeString(source.orderName),
     amount: normalizeNonNegativeNumber(source.amount),
     bankCd: normalizeString(source.bankCd),
+    bankNm: normalizeString(source.bankNm),
     bankNo: normalizeString(source.bankNo),
     vactHolderNm: normalizeString(source.vactHolderNm),
     vactDueDt: normalizeString(source.vactDueDt),

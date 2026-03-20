@@ -75,6 +75,33 @@ function buildCartItemKey(goodsId: string, sizeId: string): string {
   return `${goodsId}||${sizeId}`;
 }
 
+// 장바구니 행의 현재 선택 사이즈 옵션을 조회합니다.
+function resolveCartItemSelectedSizeOption(cartItem: ShopCartItem): ShopCartSizeOption | null {
+  const normalizedSizeId = cartItem.sizeId.trim();
+  return cartItem.sizeOptions.find((sizeOption) => sizeOption.sizeId.trim() === normalizedSizeId) ?? null;
+}
+
+// 장바구니 행의 현재 구매 가능 재고 수량을 계산합니다.
+function resolveCartItemAvailableStockQty(cartItem: ShopCartItem): number {
+  const selectedSizeOption = resolveCartItemSelectedSizeOption(cartItem);
+  return selectedSizeOption ? normalizeNonNegativeNumber(selectedSizeOption.stockQty) : 0;
+}
+
+// 장바구니 행이 현재 재고 부족 상태인지 확인합니다.
+function isCartItemStockShortage(cartItem: ShopCartItem): boolean {
+  return normalizeQuantity(cartItem.qty) > resolveCartItemAvailableStockQty(cartItem);
+}
+
+// 현재 주문 가능한 장바구니 상품 목록만 추출합니다.
+function resolveOrderableCartItemList(cartList: ShopCartItem[]): ShopCartItem[] {
+  return cartList.filter((cartItem) => !isCartItemStockShortage(cartItem));
+}
+
+// 장바구니 행의 재고 부족 안내 문구를 생성합니다.
+function resolveCartItemStockShortageMessage(cartItem: ShopCartItem): string {
+  return `재고 부족, 구매 가능 수량: ${resolveCartItemAvailableStockQty(cartItem).toLocaleString("ko-KR")}`;
+}
+
 // 현재 페이지 경로(pathname + search)를 로그인 복귀용 경로로 반환합니다.
 function resolveCurrentPagePath(): string {
   if (typeof window === "undefined") {
@@ -85,7 +112,7 @@ function resolveCurrentPagePath(): string {
 
 // 장바구니 목록 기준 초기 체크 상태(전체 선택)를 생성합니다.
 function createInitialCheckedKeySet(cartList: ShopCartItem[]): Set<string> {
-  return new Set(cartList.map((cartItem) => buildCartItemKey(cartItem.goodsId, cartItem.sizeId)));
+  return new Set(resolveOrderableCartItemList(cartList).map((cartItem) => buildCartItemKey(cartItem.goodsId, cartItem.sizeId)));
 }
 
 // 장바구니 목록 기준 초기 옵션 변경 Draft 상태를 생성합니다.
@@ -103,7 +130,9 @@ function createInitialOptionDraftMap(cartList: ShopCartItem[]): Record<string, S
 
 // 선택된 장바구니 상품 목록을 계산합니다.
 function resolveSelectedCartItemList(cartList: ShopCartItem[], checkedKeySet: Set<string>): ShopCartItem[] {
-  return cartList.filter((cartItem) => checkedKeySet.has(buildCartItemKey(cartItem.goodsId, cartItem.sizeId)));
+  return cartList.filter(
+    (cartItem) => checkedKeySet.has(buildCartItemKey(cartItem.goodsId, cartItem.sizeId)) && !isCartItemStockShortage(cartItem),
+  );
 }
 
 // 선택된 장바구니 기준 금액 요약(공급가/판매가/배송비/총결제금액)을 계산합니다.
@@ -220,18 +249,18 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
   }, [cartList]);
 
   // 장바구니 전체 키 목록을 계산합니다.
-  const allCartItemKeyList = useMemo(
-    () => cartList.map((cartItem) => buildCartItemKey(cartItem.goodsId, cartItem.sizeId)),
+  const orderableCartItemKeyList = useMemo(
+    () => resolveOrderableCartItemList(cartList).map((cartItem) => buildCartItemKey(cartItem.goodsId, cartItem.sizeId)),
     [cartList],
   );
 
   // 상단 전체선택 체크 상태를 계산합니다.
   const isAllChecked = useMemo(() => {
-    if (allCartItemKeyList.length === 0) {
+    if (orderableCartItemKeyList.length === 0) {
       return false;
     }
-    return allCartItemKeyList.every((cartItemKey) => checkedKeySet.has(cartItemKey));
-  }, [allCartItemKeyList, checkedKeySet]);
+    return orderableCartItemKeyList.every((cartItemKey) => checkedKeySet.has(cartItemKey));
+  }, [checkedKeySet, orderableCartItemKeyList]);
 
   // 선택된 장바구니 목록을 계산합니다.
   const selectedCartList = useMemo(() => resolveSelectedCartItemList(cartList, checkedKeySet), [cartList, checkedKeySet]);
@@ -333,11 +362,16 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
       setCheckedKeySet(new Set());
       return;
     }
-    setCheckedKeySet(new Set(allCartItemKeyList));
+    setCheckedKeySet(new Set(orderableCartItemKeyList));
   };
 
   // 개별 행 체크박스 토글을 처리합니다.
   const handleToggleItemCheck = (cartItem: ShopCartItem): void => {
+    // 재고 부족 상품은 선택할 수 없도록 유지합니다.
+    if (isCartItemStockShortage(cartItem)) {
+      return;
+    }
+
     // 클릭 대상 행 키를 기준으로 선택 상태를 반전합니다.
     const cartItemKey = buildCartItemKey(cartItem.goodsId, cartItem.sizeId);
     setCheckedKeySet((previousCheckedKeySet) => {
@@ -607,6 +641,10 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
   // 행 단위 주문하기 버튼 동작을 처리합니다.
   const handleOrderSingle = (cartItem: ShopCartItem): void => {
     // 상품 행 단건 주문 검증 후 주문서 화면으로 이동합니다.
+    if (isCartItemStockShortage(cartItem)) {
+      window.alert(resolveCartItemStockShortageMessage(cartItem));
+      return;
+    }
     if (normalizeQuantity(cartItem.qty) < 1) {
       window.alert("주문할 수량을 확인해주세요.");
       return;
@@ -675,7 +713,6 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
             <ul className={styles.cartList}>
               {cartList.map((cartItem) => {
                 const cartItemKey = buildCartItemKey(cartItem.goodsId, cartItem.sizeId);
-                const checked = checkedKeySet.has(cartItemKey);
                 const optionDraft = resolveOptionDraft(cartItem);
                 const rowQty = normalizeQuantity(optionDraft.qty);
                 const rowSupplyAmt = normalizeNonNegativeNumber(cartItem.supplyAmt) * rowQty;
@@ -687,10 +724,17 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
                     : [{ sizeId: cartItem.sizeId, stockQty: 0, soldOut: false }];
                 const isUpdating = updatingItemKey === cartItemKey;
                 const isDeleting = deletingItemKey === cartItemKey;
+                const isStockShortage = isCartItemStockShortage(cartItem);
+                const checked = !isStockShortage && checkedKeySet.has(cartItemKey);
                 return (
                   <li key={cartItemKey} className={styles.cartItem}>
                     <div className={styles.cartItemCheckWrap}>
-                      <input type="checkbox" checked={checked} onChange={() => handleToggleItemCheck(cartItem)} />
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => handleToggleItemCheck(cartItem)}
+                        disabled={isStockShortage || isUpdating || isDeleting}
+                      />
                     </div>
 
                     <Link href={`/goods?goodsId=${encodeURIComponent(cartItem.goodsId)}`} className={styles.thumbnailLink}>
@@ -738,6 +782,7 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
                           />
                         </label>
                       </div>
+                      {isStockShortage ? <p className={styles.stockWarningText}>{resolveCartItemStockShortageMessage(cartItem)}</p> : null}
                     </div>
 
                     <div className={styles.itemPriceColumn}>
@@ -750,7 +795,7 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
                         type="button"
                         className={styles.primaryButton}
                         onClick={() => handleOrderSingle(cartItem)}
-                        disabled={isUpdating || isDeleting}
+                        disabled={isStockShortage || isUpdating || isDeleting}
                       >
                         주문하기
                       </button>
@@ -804,7 +849,14 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
               <dd>{isCouponEstimateLoading ? "계산중..." : `${formatPrice(expectedTotalPayAmt)}원`}</dd>
             </div>
           </dl>
-          <button type="button" className={styles.orderButton} onClick={handleOrderSelected}>
+          <button
+            type="button"
+            className={styles.orderButton}
+            onClick={handleOrderSelected}
+            disabled={
+              selectedCartList.length === 0 || isSelectedDeleteSubmitting || isAllDeleteSubmitting || deletingItemKey !== "" || updatingItemKey !== ""
+            }
+          >
             선택 상품 주문하기
           </button>
         </aside>

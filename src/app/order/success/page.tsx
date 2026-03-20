@@ -126,7 +126,7 @@ export default function ShopOrderSuccessPage() {
               <>
                 <div className={styles.summaryRow}>
                   <dt className={styles.summaryLabel}>가상계좌 은행</dt>
-                  <dd className={styles.summaryValue}>{result.bankCd || "-"}</dd>
+                  <dd className={styles.summaryValue}>{result.bankNm || result.bankCd || "-"}</dd>
                 </div>
                 <div className={styles.summaryRow}>
                   <dt className={styles.summaryLabel}>가상계좌 번호</dt>

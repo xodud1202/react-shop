@@ -215,6 +215,7 @@ export interface ShopOrderPaymentConfirmResponse {
   orderName: string;
   amount: number;
   bankCd: string;
+  bankNm: string;
   bankNo: string;
   vactHolderNm: string;
   vactDueDt: string;

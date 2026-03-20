@@ -97,7 +97,7 @@ export default async function ShopOrderPage({ searchParams }: ShopOrderPageProps
     redirect(buildLoginFormPath(buildCurrentOrderPath(cartIdList, goodsId)));
   }
   if (!orderPageResult.ok) {
-    return <ShopOrderInvalidEntryHandler goodsId={goodsId} />;
+    return <ShopOrderInvalidEntryHandler goodsId={goodsId} message={orderPageResult.message} />;
   }
   const entryInfo: ShopOrderEntryInfo = {
     from,
