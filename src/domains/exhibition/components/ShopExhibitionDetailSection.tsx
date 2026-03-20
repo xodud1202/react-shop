@@ -304,7 +304,7 @@ export default function ShopExhibitionDetailSection({
 
       {visibleDetailHtml !== "" ? (
         <section className={styles.htmlSection}>
-          <div className={styles.htmlContent} dangerouslySetInnerHTML={{ __html: visibleDetailHtml }} />
+          <div className={`${styles.htmlContent} ${styles.quillContent} shop-quill-content ql-editor`} dangerouslySetInnerHTML={{ __html: visibleDetailHtml }} />
         </section>
       ) : null}
 

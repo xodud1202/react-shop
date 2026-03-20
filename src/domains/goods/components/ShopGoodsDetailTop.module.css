@@ -461,6 +461,11 @@
   line-height: 1.7;
 }
 
+.quillContent {
+  height: auto;
+  overflow: visible;
+}
+
 .brandNotiContent :global(img) {
   max-width: 100%;
   height: auto;
@@ -565,9 +570,6 @@
   width: auto !important;
   max-width: 100% !important;
   height: auto !important;
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .detailContent :global(table) {

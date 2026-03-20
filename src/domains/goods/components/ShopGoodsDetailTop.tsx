@@ -1035,7 +1035,7 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
 
         {brandNotiHtml !== "" ? (
           <section className={styles.brandNotiSection}>
-            <div className={styles.brandNotiContent} dangerouslySetInnerHTML={{ __html: brandNotiHtml }} />
+            <div className={`${styles.brandNotiContent} ${styles.quillContent} shop-quill-content ql-editor`} dangerouslySetInnerHTML={{ __html: brandNotiHtml }} />
           </section>
         ) : null}
 
@@ -1082,7 +1082,7 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
             <div className={styles.detailContentWrap}>
               <div
                 ref={detailContentRef}
-                className={`${styles.detailContent} ${showDetailExpandButton ? styles.detailContentCollapsed : ""}`}
+                className={`${styles.detailContent} ${styles.quillContent} shop-quill-content ql-editor ${showDetailExpandButton ? styles.detailContentCollapsed : ""}`}
                 dangerouslySetInnerHTML={{ __html: visibleDetailHtml }}
               />
               {showDetailExpandButton ? <div className={styles.detailFadeOut} aria-hidden="true" /> : null}

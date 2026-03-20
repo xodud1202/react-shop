@@ -5,6 +5,7 @@ import ShopHeader from "@/domains/header/components/ShopHeader";
 import ShopFooter from "@/domains/footer/components/ShopFooter";
 import ShopSessionKeeper from "@/domains/login/components/ShopSessionKeeper";
 import { fetchShopHeaderServerData } from "@/domains/header/api/headerServerApi";
+import "react-quill-new/dist/quill.snow.css";
 import "./globals.css";
 import "swiper/css";
 import "swiper/css/navigation";
@@ -42,4 +43,3 @@ export default async function RootLayout({
     </html>
   );
 }
-

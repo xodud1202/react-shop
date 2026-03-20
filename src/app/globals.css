@@ -53,3 +53,58 @@ input {
   font-size: 15px;
   color: #64748b;
 }
+
+/* Quill 읽기 전용 HTML이 Tailwind preflight와 충돌하지 않도록 렌더링 규칙을 보정합니다. */
+.shop-quill-content {
+  height: auto;
+  overflow: visible;
+  padding: 0 !important;
+}
+
+/* Quill 정렬 문단 안의 이미지가 block reset에 막히지 않도록 inline-block으로 복원합니다. */
+.shop-quill-content img {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+
+/* Quill가 저장한 리스트 HTML이 읽기 화면에서도 기본 marker를 유지하도록 복원합니다. */
+.shop-quill-content ol,
+.shop-quill-content ul {
+  margin: 0;
+  padding-left: 1.5em;
+}
+
+/* 일반 ordered/unordered 리스트 marker를 복원합니다. */
+.shop-quill-content ol > li {
+  list-style-type: decimal;
+  list-style-position: outside;
+}
+
+.shop-quill-content ul > li {
+  list-style-type: disc;
+  list-style-position: outside;
+}
+
+/* Quill bullet/ordered data-list 저장 형식을 읽기 화면에서 marker로 변환합니다. */
+.shop-quill-content li[data-list="bullet"] {
+  list-style-type: disc;
+  list-style-position: outside;
+}
+
+.shop-quill-content li[data-list="ordered"] {
+  list-style-type: decimal;
+  list-style-position: outside;
+}
+
+/* 체크리스트는 marker 대신 일반 텍스트 흐름만 유지합니다. */
+.shop-quill-content li[data-list="checked"],
+.shop-quill-content li[data-list="unchecked"] {
+  list-style-type: none;
+}
+
+/* 읽기 화면에서는 에디터용 보조 UI를 숨깁니다. */
+.shop-quill-content .ql-ui {
+  display: none;
+}
