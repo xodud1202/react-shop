@@ -2,6 +2,10 @@ import type {
   ShopMypageCouponPageResponse,
   ShopMypageCouponUnavailableGoodsItem,
   ShopMypageDownloadableCouponItem,
+  ShopMypageOrderDetailItem,
+  ShopMypageOrderGroup,
+  ShopMypageOrderPageResponse,
+  ShopMypageOrderStatusSummary,
   ShopMypageOwnedCouponItem,
   ShopMypageWishPageResponse,
 } from "@/domains/mypage/types";
@@ -31,6 +35,33 @@ function createDefaultShopMypageCouponPageResponse(): ShopMypageCouponPageRespon
     downloadablePageNo: 1,
     downloadablePageSize: 10,
     downloadableTotalPageCount: 0,
+  };
+}
+
+// 마이페이지 주문내역 기본 상태 요약 응답값을 생성합니다.
+function createDefaultShopMypageOrderStatusSummary(): ShopMypageOrderStatusSummary {
+  return {
+    waitingForDepositCount: 0,
+    paymentCompletedCount: 0,
+    productPreparingCount: 0,
+    deliveryPreparingCount: 0,
+    shippingCount: 0,
+    deliveryCompletedCount: 0,
+    purchaseConfirmedCount: 0,
+  };
+}
+
+// 마이페이지 주문내역 기본 응답값을 생성합니다.
+function createDefaultShopMypageOrderPageResponse(): ShopMypageOrderPageResponse {
+  return {
+    orderList: [],
+    orderCount: 0,
+    pageNo: 1,
+    pageSize: 5,
+    totalPageCount: 0,
+    startDate: "",
+    endDate: "",
+    statusSummary: createDefaultShopMypageOrderStatusSummary(),
   };
 }
 
@@ -65,6 +96,51 @@ function normalizeNullableString(value: unknown): string | null {
 // 문자열 값을 빈 문자열 기본값으로 보정합니다.
 function normalizeString(value: unknown): string {
   return normalizeNullableString(value) ?? "";
+}
+
+// 마이페이지 주문내역 주문상세 행을 기본값과 함께 정규화합니다.
+function normalizeShopMypageOrderDetailItem(rawItem: unknown): ShopMypageOrderDetailItem {
+  const source = (rawItem ?? {}) as Partial<ShopMypageOrderDetailItem>;
+  return {
+    ordNo: normalizeString(source.ordNo),
+    ordDtlNo: normalizeNonNegativeNumber(source.ordDtlNo),
+    ordDtlStatCd: normalizeString(source.ordDtlStatCd),
+    ordDtlStatNm: normalizeString(source.ordDtlStatNm),
+    goodsId: normalizeString(source.goodsId),
+    goodsNm: normalizeString(source.goodsNm),
+    sizeId: normalizeString(source.sizeId),
+    ordQty: normalizeNonNegativeNumber(source.ordQty),
+    saleAmt: normalizeNonNegativeNumber(source.saleAmt),
+    addAmt: normalizeNonNegativeNumber(source.addAmt),
+    imgPath: normalizeString(source.imgPath),
+    imgUrl: normalizeString(source.imgUrl),
+  };
+}
+
+// 마이페이지 주문내역 주문번호 그룹을 기본값과 함께 정규화합니다.
+function normalizeShopMypageOrderGroup(rawItem: unknown): ShopMypageOrderGroup {
+  const source = (rawItem ?? {}) as Partial<ShopMypageOrderGroup>;
+  return {
+    ordNo: normalizeString(source.ordNo),
+    orderDt: normalizeString(source.orderDt),
+    detailList: Array.isArray(source.detailList)
+      ? source.detailList.map((item) => normalizeShopMypageOrderDetailItem(item))
+      : [],
+  };
+}
+
+// 마이페이지 주문내역 상태 요약을 기본값과 함께 정규화합니다.
+function normalizeShopMypageOrderStatusSummary(rawValue: unknown): ShopMypageOrderStatusSummary {
+  const source = (rawValue ?? {}) as Partial<ShopMypageOrderStatusSummary>;
+  return {
+    waitingForDepositCount: normalizeNonNegativeNumber(source.waitingForDepositCount),
+    paymentCompletedCount: normalizeNonNegativeNumber(source.paymentCompletedCount),
+    productPreparingCount: normalizeNonNegativeNumber(source.productPreparingCount),
+    deliveryPreparingCount: normalizeNonNegativeNumber(source.deliveryPreparingCount),
+    shippingCount: normalizeNonNegativeNumber(source.shippingCount),
+    deliveryCompletedCount: normalizeNonNegativeNumber(source.deliveryCompletedCount),
+    purchaseConfirmedCount: normalizeNonNegativeNumber(source.purchaseConfirmedCount),
+  };
 }
 
 // 쿠폰 사용 불가 상품 응답 행을 기본값과 함께 정규화합니다.
@@ -140,6 +216,15 @@ function buildShopMypageCouponPagePath(ownedPageNo: number, downloadablePageNo: 
   queryParams.set("ownedPageNo", String(resolvePageNo(ownedPageNo)));
   queryParams.set("downloadablePageNo", String(resolvePageNo(downloadablePageNo)));
   return `/api/shop/mypage/coupon/page?${queryParams.toString()}`;
+}
+
+// 마이페이지 주문내역 API 경로를 생성합니다.
+function buildShopMypageOrderPagePath(pageNo: number, startDate: string, endDate: string): string {
+  const queryParams = new URLSearchParams();
+  queryParams.set("pageNo", String(resolvePageNo(pageNo)));
+  queryParams.set("startDate", normalizeString(startDate));
+  queryParams.set("endDate", normalizeString(endDate));
+  return `/api/shop/mypage/order/page?${queryParams.toString()}`;
 }
 
 // 마이페이지 개별 쿠폰 다운로드 API 경로를 반환합니다.
@@ -233,5 +318,47 @@ export async function fetchShopMypageCouponPageServerData(
       typeof response.downloadableTotalPageCount === "number" && response.downloadableTotalPageCount >= 0
         ? Math.floor(response.downloadableTotalPageCount)
         : defaultResponse.downloadableTotalPageCount,
+  };
+}
+
+// 마이페이지 주문내역 페이지 SSR 데이터를 조회합니다.
+export async function fetchShopMypageOrderPageServerData(
+  pageNo: number,
+  startDate: string,
+  endDate: string,
+  cookieHeader: string,
+): Promise<ShopMypageOrderPageResponse> {
+  // 주문내역 API 경로를 생성해 응답을 조회합니다.
+  const path = buildShopMypageOrderPagePath(pageNo, startDate, endDate);
+  const requestInit = cookieHeader.trim() === "" ? undefined : { headers: { cookie: cookieHeader } };
+  const response = await readShopServerApiResponse<ShopMypageOrderPageResponse>(path, requestInit);
+  const defaultResponse = createDefaultShopMypageOrderPageResponse();
+
+  // 응답 유효성을 확인한 뒤 기본값을 반환합니다.
+  if (!response) {
+    return {
+      ...defaultResponse,
+      startDate: normalizeString(startDate),
+      endDate: normalizeString(endDate),
+    };
+  }
+
+  return {
+    orderList: Array.isArray(response.orderList)
+      ? response.orderList.map((item) => normalizeShopMypageOrderGroup(item))
+      : defaultResponse.orderList,
+    orderCount: normalizeNonNegativeNumber(response.orderCount),
+    pageNo: typeof response.pageNo === "number" ? resolvePageNo(response.pageNo) : defaultResponse.pageNo,
+    pageSize:
+      typeof response.pageSize === "number" && response.pageSize > 0
+        ? Math.floor(response.pageSize)
+        : defaultResponse.pageSize,
+    totalPageCount:
+      typeof response.totalPageCount === "number" && response.totalPageCount >= 0
+        ? Math.floor(response.totalPageCount)
+        : defaultResponse.totalPageCount,
+    startDate: normalizeString(response.startDate || startDate),
+    endDate: normalizeString(response.endDate || endDate),
+    statusSummary: normalizeShopMypageOrderStatusSummary(response.statusSummary),
   };
 }

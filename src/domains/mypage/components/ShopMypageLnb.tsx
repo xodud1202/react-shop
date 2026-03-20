@@ -16,7 +16,7 @@ const SHOP_MYPAGE_LNB_MENU_LIST: ShopMypageLnbMenuItem[] = [
   {
     label: "주문현황",
     children: [
-      { label: "주문내역", href: "/mypage/orders/list", disabled: true },
+      { label: "주문내역", href: "/mypage/order" },
       { label: "취소내역", href: "/mypage/orders/cancel", disabled: true },
       { label: "교환내역", href: "/mypage/orders/exchange", disabled: true },
       { label: "반품내역", href: "/mypage/orders/return", disabled: true },

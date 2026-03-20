@@ -17,6 +17,52 @@ export interface ShopMypageWishPageResponse {
   totalPageCount: number;
 }
 
+// 마이페이지 주문내역 주문상세 아이템 타입입니다.
+export interface ShopMypageOrderDetailItem {
+  ordNo: string;
+  ordDtlNo: number;
+  ordDtlStatCd: string;
+  ordDtlStatNm: string;
+  goodsId: string;
+  goodsNm: string;
+  sizeId: string;
+  ordQty: number;
+  saleAmt: number;
+  addAmt: number;
+  imgPath: string;
+  imgUrl: string;
+}
+
+// 마이페이지 주문내역 주문번호 그룹 타입입니다.
+export interface ShopMypageOrderGroup {
+  ordNo: string;
+  orderDt: string;
+  detailList: ShopMypageOrderDetailItem[];
+}
+
+// 마이페이지 주문내역 상태 요약 타입입니다.
+export interface ShopMypageOrderStatusSummary {
+  waitingForDepositCount: number;
+  paymentCompletedCount: number;
+  productPreparingCount: number;
+  deliveryPreparingCount: number;
+  shippingCount: number;
+  deliveryCompletedCount: number;
+  purchaseConfirmedCount: number;
+}
+
+// 마이페이지 주문내역 페이지 응답 타입입니다.
+export interface ShopMypageOrderPageResponse {
+  orderList: ShopMypageOrderGroup[];
+  orderCount: number;
+  pageNo: number;
+  pageSize: number;
+  totalPageCount: number;
+  startDate: string;
+  endDate: string;
+  statusSummary: ShopMypageOrderStatusSummary;
+}
+
 // 마이페이지 쿠폰함 보유 쿠폰 아이템 타입입니다.
 export interface ShopMypageOwnedCouponItem {
   custCpnNo: number;
