@@ -21,6 +21,7 @@ import styles from "./ShopGoodsDetailTop.module.css";
 interface ShopGoodsDetailTopProps {
   detailData: ShopGoodsDetailResponse | null;
   requestedGoodsId: string;
+  requestedExhibitionNo: number | null;
 }
 
 interface ShopGoodsCouponDownloadResponse {
@@ -37,6 +38,13 @@ interface ShopGoodsOrderNowResponse {
   cartId?: number;
   goodsId?: string;
   message?: string;
+}
+
+interface ShopGoodsCartMutationPayload {
+  goodsId: string;
+  sizeId: string;
+  qty: number;
+  exhibitionNo?: number;
 }
 
 const GOODS_DETAIL_COLLAPSE_HEIGHT = 500;
@@ -157,6 +165,35 @@ function buildGoodsCouponDownloadRequestPayload(goodsId: string, cpnNo: number):
   };
 }
 
+// 상품상세 장바구니/바로구매 요청용 기획전 번호를 정규화합니다.
+function resolveRequestedExhibitionNo(exhibitionNo: number | null): number | null {
+  if (!Number.isInteger(exhibitionNo) || (exhibitionNo ?? 0) < 1) {
+    return null;
+  }
+  return exhibitionNo;
+}
+
+// 상품상세 장바구니/바로구매 요청 payload를 생성합니다.
+function buildShopGoodsCartMutationPayload(
+  goodsId: string,
+  sizeId: string,
+  qty: number,
+  exhibitionNo: number | null
+): ShopGoodsCartMutationPayload {
+  const payload: ShopGoodsCartMutationPayload = {
+    goodsId,
+    sizeId,
+    qty,
+  };
+
+  const normalizedExhibitionNo = resolveRequestedExhibitionNo(exhibitionNo);
+  if (normalizedExhibitionNo !== null) {
+    payload.exhibitionNo = normalizedExhibitionNo;
+  }
+
+  return payload;
+}
+
 // 현재 뷰포트 기준으로 노출할 상품상세 HTML을 계산합니다.
 function resolveVisibleDetailHtml(detailData: ShopGoodsDetailResponse | null, isMobileViewport: boolean): string {
   const pcDetailHtml = detailData?.detailDesc?.pcDesc?.trim() ?? "";
@@ -193,7 +230,7 @@ function shouldRenderDetailImageFallback(detailHtml: string): boolean {
 }
 
 // 상품상세 상단 UI를 렌더링합니다.
-export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: ShopGoodsDetailTopProps) {
+export default function ShopGoodsDetailTop({ detailData, requestedGoodsId, requestedExhibitionNo }: ShopGoodsDetailTopProps) {
   const router = useRouter();
 
   // 반응형 상세 HTML 선택을 위해 모바일 뷰포트 여부를 관리합니다.
@@ -713,11 +750,7 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({
-          goodsId: targetGoodsId,
-          sizeId: targetSizeId,
-          qty: orderQuantity,
-        }),
+        body: JSON.stringify(buildShopGoodsCartMutationPayload(targetGoodsId, targetSizeId, orderQuantity, requestedExhibitionNo)),
       });
 
       // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
@@ -776,11 +809,7 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId }: Sho
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({
-          goodsId: targetGoodsId,
-          sizeId: targetSizeId,
-          qty: orderQuantity,
-        }),
+        body: JSON.stringify(buildShopGoodsCartMutationPayload(targetGoodsId, targetSizeId, orderQuantity, requestedExhibitionNo)),
       });
 
       // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.

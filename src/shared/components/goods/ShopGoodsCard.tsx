@@ -45,9 +45,14 @@ function resolveImageState(item: ShopGoodsCardItem) {
 }
 
 // 상품상세 화면 이동 링크를 생성합니다.
-function buildGoodsDetailHref(goodsId: string): string {
-  // 상품코드를 URL 인코딩해 쿼리스트링으로 반환합니다.
-  return `/goods?goodsId=${encodeURIComponent(goodsId)}`;
+function buildGoodsDetailHref(item: Pick<ShopGoodsCardItem, "goodsId" | "exhibitionNo">): string {
+  // 상품코드와 선택적 기획전 번호를 쿼리스트링으로 구성합니다.
+  const queryParams = new URLSearchParams();
+  queryParams.set("goodsId", item.goodsId);
+  if (Number.isInteger(item.exhibitionNo) && (item.exhibitionNo ?? 0) > 0) {
+    queryParams.set("exhibitionNo", String(item.exhibitionNo));
+  }
+  return `/goods?${queryParams.toString()}`;
 }
 
 // 공통 상품 카드 UI를 렌더링합니다.
@@ -58,7 +63,7 @@ export default function ShopGoodsCard({ item }: ShopGoodsCardProps) {
 
   return (
     <article className={`${styles.productCard} ${imageState.hasSecondaryImage ? styles.productCardHoverable : ""}`}>
-      <Link className={styles.productLink} href={buildGoodsDetailHref(item.goodsId)}>
+      <Link className={styles.productLink} href={buildGoodsDetailHref(item)}>
         <div className={styles.productThumbWrap}>
           {imageState.hasPrimaryImage ? (
             <div className={styles.productThumbInner}>

@@ -5,6 +5,7 @@ export interface ShopGoodsCardItem {
   brandNm: string;
   supplyAmt?: number | null;
   saleAmt: number;
+  exhibitionNo?: number | null;
   imgPath?: string | null;
   imgUrl?: string | null;
   secondaryImgPath?: string | null;
