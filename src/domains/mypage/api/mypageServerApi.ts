@@ -2,7 +2,9 @@ import type {
   ShopMypageCouponPageResponse,
   ShopMypageCouponUnavailableGoodsItem,
   ShopMypageDownloadableCouponItem,
+  ShopMypageOrderAmountSummary,
   ShopMypageOrderDetailItem,
+  ShopMypageOrderDetailPageResponse,
   ShopMypageOrderGroup,
   ShopMypageOrderPageResponse,
   ShopMypageOrderStatusSummary,
@@ -65,6 +67,22 @@ function createDefaultShopMypageOrderPageResponse(): ShopMypageOrderPageResponse
   };
 }
 
+// 마이페이지 주문상세 기본 금액 요약 응답값을 생성합니다.
+function createDefaultShopMypageOrderAmountSummary(): ShopMypageOrderAmountSummary {
+  return {
+    totalSupplyAmt: 0,
+    totalOrderAmt: 0,
+    totalGoodsDiscountAmt: 0,
+    totalGoodsCouponDiscountAmt: 0,
+    totalCartCouponDiscountAmt: 0,
+    totalCouponDiscountAmt: 0,
+    totalPointUseAmt: 0,
+    deliveryFeeAmt: 0,
+    deliveryCouponDiscountAmt: 0,
+    finalPayAmt: 0,
+  };
+}
+
 // 정수형 숫자값을 0 이상의 값으로 보정합니다.
 function normalizeNonNegativeNumber(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -110,6 +128,7 @@ function normalizeShopMypageOrderDetailItem(rawItem: unknown): ShopMypageOrderDe
     goodsNm: normalizeString(source.goodsNm),
     sizeId: normalizeString(source.sizeId),
     ordQty: normalizeNonNegativeNumber(source.ordQty),
+    supplyAmt: normalizeNonNegativeNumber(source.supplyAmt),
     saleAmt: normalizeNonNegativeNumber(source.saleAmt),
     addAmt: normalizeNonNegativeNumber(source.addAmt),
     imgPath: normalizeString(source.imgPath),
@@ -140,6 +159,32 @@ function normalizeShopMypageOrderStatusSummary(rawValue: unknown): ShopMypageOrd
     shippingCount: normalizeNonNegativeNumber(source.shippingCount),
     deliveryCompletedCount: normalizeNonNegativeNumber(source.deliveryCompletedCount),
     purchaseConfirmedCount: normalizeNonNegativeNumber(source.purchaseConfirmedCount),
+  };
+}
+
+// 마이페이지 주문상세 금액 요약을 기본값과 함께 정규화합니다.
+function normalizeShopMypageOrderAmountSummary(rawValue: unknown): ShopMypageOrderAmountSummary {
+  const source = (rawValue ?? {}) as Partial<ShopMypageOrderAmountSummary>;
+  const totalGoodsCouponDiscountAmt = normalizeNonNegativeNumber(source.totalGoodsCouponDiscountAmt);
+  const totalCartCouponDiscountAmt = normalizeNonNegativeNumber(source.totalCartCouponDiscountAmt);
+
+  // 총 쿠폰할인 값이 없으면 세부 쿠폰 금액 합계로 보정합니다.
+  const totalCouponDiscountAmt =
+    source.totalCouponDiscountAmt === null || source.totalCouponDiscountAmt === undefined
+      ? totalGoodsCouponDiscountAmt + totalCartCouponDiscountAmt
+      : normalizeNonNegativeNumber(source.totalCouponDiscountAmt);
+
+  return {
+    totalSupplyAmt: normalizeNonNegativeNumber(source.totalSupplyAmt),
+    totalOrderAmt: normalizeNonNegativeNumber(source.totalOrderAmt),
+    totalGoodsDiscountAmt: normalizeNonNegativeNumber(source.totalGoodsDiscountAmt),
+    totalGoodsCouponDiscountAmt,
+    totalCartCouponDiscountAmt,
+    totalCouponDiscountAmt,
+    totalPointUseAmt: normalizeNonNegativeNumber(source.totalPointUseAmt),
+    deliveryFeeAmt: normalizeNonNegativeNumber(source.deliveryFeeAmt),
+    deliveryCouponDiscountAmt: normalizeNonNegativeNumber(source.deliveryCouponDiscountAmt),
+    finalPayAmt: normalizeNonNegativeNumber(source.finalPayAmt),
   };
 }
 
@@ -225,6 +270,13 @@ function buildShopMypageOrderPagePath(pageNo: number, startDate: string, endDate
   queryParams.set("startDate", normalizeString(startDate));
   queryParams.set("endDate", normalizeString(endDate));
   return `/api/shop/mypage/order/page?${queryParams.toString()}`;
+}
+
+// 마이페이지 주문상세 API 경로를 생성합니다.
+function buildShopMypageOrderDetailPagePath(ordNo: string): string {
+  const queryParams = new URLSearchParams();
+  queryParams.set("ordNo", normalizeString(ordNo));
+  return `/api/shop/mypage/order/detail?${queryParams.toString()}`;
 }
 
 // 마이페이지 개별 쿠폰 다운로드 API 경로를 반환합니다.
@@ -360,5 +412,34 @@ export async function fetchShopMypageOrderPageServerData(
     startDate: normalizeString(response.startDate || startDate),
     endDate: normalizeString(response.endDate || endDate),
     statusSummary: normalizeShopMypageOrderStatusSummary(response.statusSummary),
+  };
+}
+
+// 마이페이지 주문상세 페이지 SSR 데이터를 조회합니다.
+export async function fetchShopMypageOrderDetailPageServerData(
+  ordNo: string,
+  cookieHeader: string,
+): Promise<ShopMypageOrderDetailPageResponse | null> {
+  // 주문상세 API 경로를 생성해 응답을 조회합니다.
+  const path = buildShopMypageOrderDetailPagePath(ordNo);
+  const requestInit = cookieHeader.trim() === "" ? undefined : { headers: { cookie: cookieHeader } };
+  const response = await readShopServerApiResponse<ShopMypageOrderDetailPageResponse>(path, requestInit);
+  const defaultAmountSummary = createDefaultShopMypageOrderAmountSummary();
+
+  // 응답이 없거나 주문번호가 유효하지 않으면 null을 반환합니다.
+  if (!response) {
+    return null;
+  }
+
+  const normalizedOrder = response.order ? normalizeShopMypageOrderGroup(response.order) : null;
+  if (!normalizedOrder || normalizedOrder.ordNo.trim() === "") {
+    return null;
+  }
+
+  return {
+    order: normalizedOrder,
+    amountSummary: response.amountSummary
+      ? normalizeShopMypageOrderAmountSummary(response.amountSummary)
+      : defaultAmountSummary,
   };
 }

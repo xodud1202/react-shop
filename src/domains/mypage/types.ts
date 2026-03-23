@@ -27,6 +27,7 @@ export interface ShopMypageOrderDetailItem {
   goodsNm: string;
   sizeId: string;
   ordQty: number;
+  supplyAmt: number;
   saleAmt: number;
   addAmt: number;
   imgPath: string;
@@ -61,6 +62,26 @@ export interface ShopMypageOrderPageResponse {
   startDate: string;
   endDate: string;
   statusSummary: ShopMypageOrderStatusSummary;
+}
+
+// 마이페이지 주문상세 금액 요약 타입입니다.
+export interface ShopMypageOrderAmountSummary {
+  totalSupplyAmt: number;
+  totalOrderAmt: number;
+  totalGoodsDiscountAmt: number;
+  totalGoodsCouponDiscountAmt: number;
+  totalCartCouponDiscountAmt: number;
+  totalCouponDiscountAmt: number;
+  totalPointUseAmt: number;
+  deliveryFeeAmt: number;
+  deliveryCouponDiscountAmt: number;
+  finalPayAmt: number;
+}
+
+// 마이페이지 주문상세 페이지 응답 타입입니다.
+export interface ShopMypageOrderDetailPageResponse {
+  order: ShopMypageOrderGroup | null;
+  amountSummary: ShopMypageOrderAmountSummary;
 }
 
 // 마이페이지 쿠폰함 보유 쿠폰 아이템 타입입니다.
