@@ -34,6 +34,7 @@ export interface ShopMypageOrderCancelPreviewResult {
   isFullCancel: boolean;
   selectedItemCount: number;
   selectedQtyCount: number;
+  cashRefundAmt: number;
   canSubmit: boolean;
   submitBlockMessage: string;
 }
@@ -222,28 +223,51 @@ interface ShopMypageOrderSliceAmount {
   pointUseAmt: number;
 }
 
+// 주문상세 행의 누적 배분 금액을 원주문 수량 기준으로 계산합니다.
+function resolveShopMypageOrderCumulativeAllocatedAmt(totalAllocatedAmt: number, totalQty: number, appliedQty: number): number {
+  const safeTotalAllocatedAmt = normalizeNonNegativeInteger(totalAllocatedAmt);
+  const safeTotalQty = Math.max(totalQty, 0);
+  const safeAppliedQty = Math.max(Math.min(appliedQty, safeTotalQty), 0);
+  if (safeTotalAllocatedAmt < 1 || safeTotalQty < 1 || safeAppliedQty < 1) {
+    return 0;
+  }
+  if (safeAppliedQty >= safeTotalQty) {
+    return safeTotalAllocatedAmt;
+  }
+  return Math.floor((safeTotalAllocatedAmt * safeAppliedQty) / safeTotalQty);
+}
+
 // 주문상세 행의 특정 수량 기준 금액/할인 배분값을 계산합니다.
-function buildShopMypageOrderSliceAmount(detailItem: ShopMypageOrderDetailItem, quantity: number): ShopMypageOrderSliceAmount {
-  const currentRemainingQty = resolveCurrentRemainingQty(detailItem);
-  const resolvedQuantity = Math.min(Math.max(quantity, 0), currentRemainingQty);
+function buildShopMypageOrderSliceAmount(
+  detailItem: ShopMypageOrderDetailItem,
+  quantity: number,
+  canceledBeforeQty: number,
+): ShopMypageOrderSliceAmount {
+  const originalQty = normalizeNonNegativeInteger(detailItem.ordQty);
+  const resolvedCanceledBeforeQty = Math.max(Math.min(canceledBeforeQty, originalQty), 0);
+  const remainingQty = Math.max(originalQty - resolvedCanceledBeforeQty, 0);
+  const resolvedQuantity = Math.min(Math.max(quantity, 0), remainingQty);
   const supplyAmt = normalizeNonNegativeInteger(detailItem.supplyAmt) * resolvedQuantity;
   const orderAmt =
     (normalizeNonNegativeInteger(detailItem.saleAmt) + normalizeNonNegativeInteger(detailItem.addAmt)) * resolvedQuantity;
   const goodsDiscountAmt = Math.max(supplyAmt - orderAmt, 0);
 
-  // 수량 비율 계산 시 전량 취소/전량 유지이면 행 전체 배분 금액을 그대로 사용합니다.
+  // 누적 취소 전/후 배분 차이만큼 이번 수량의 쿠폰/포인트 금액을 계산합니다.
   const goodsCouponDiscountAmt =
-    resolvedQuantity >= currentRemainingQty
-      ? normalizeNonNegativeInteger(detailItem.goodsCouponDiscountAmt)
-      : Math.floor((normalizeNonNegativeInteger(detailItem.goodsCouponDiscountAmt) * resolvedQuantity) / currentRemainingQty);
+    resolveShopMypageOrderCumulativeAllocatedAmt(
+      detailItem.goodsCouponDiscountAmt,
+      originalQty,
+      resolvedCanceledBeforeQty + resolvedQuantity,
+    ) - resolveShopMypageOrderCumulativeAllocatedAmt(detailItem.goodsCouponDiscountAmt, originalQty, resolvedCanceledBeforeQty);
   const cartCouponDiscountAmt =
-    resolvedQuantity >= currentRemainingQty
-      ? normalizeNonNegativeInteger(detailItem.cartCouponDiscountAmt)
-      : Math.floor((normalizeNonNegativeInteger(detailItem.cartCouponDiscountAmt) * resolvedQuantity) / currentRemainingQty);
+    resolveShopMypageOrderCumulativeAllocatedAmt(
+      detailItem.cartCouponDiscountAmt,
+      originalQty,
+      resolvedCanceledBeforeQty + resolvedQuantity,
+    ) - resolveShopMypageOrderCumulativeAllocatedAmt(detailItem.cartCouponDiscountAmt, originalQty, resolvedCanceledBeforeQty);
   const pointUseAmt =
-    resolvedQuantity >= currentRemainingQty
-      ? normalizeNonNegativeInteger(detailItem.pointUseAmt)
-      : Math.floor((normalizeNonNegativeInteger(detailItem.pointUseAmt) * resolvedQuantity) / currentRemainingQty);
+    resolveShopMypageOrderCumulativeAllocatedAmt(detailItem.pointUseAmt, originalQty, resolvedCanceledBeforeQty + resolvedQuantity) -
+    resolveShopMypageOrderCumulativeAllocatedAmt(detailItem.pointUseAmt, originalQty, resolvedCanceledBeforeQty);
 
   return {
     supplyAmt,
@@ -298,6 +322,7 @@ export function buildShopMypageOrderCancelPreviewResult(
       isFullCancel: false,
       selectedItemCount: 0,
       selectedQtyCount: 0,
+      cashRefundAmt: 0,
       canSubmit: false,
       submitBlockMessage: "주문 정보를 확인해주세요.",
     };
@@ -310,12 +335,14 @@ export function buildShopMypageOrderCancelPreviewResult(
 
   // 각 행을 취소 수량과 남는 수량으로 분리해 금액 요약을 계산합니다.
   for (const detailItem of order.detailList) {
+    const originalQty = normalizeNonNegativeInteger(detailItem.ordQty);
     const currentRemainingQty = resolveCurrentRemainingQty(detailItem);
     if (currentRemainingQty < 1) {
       continue;
     }
     activeItemCount += 1;
     activeOrderAmt += (normalizeNonNegativeInteger(detailItem.saleAmt) + normalizeNonNegativeInteger(detailItem.addAmt)) * currentRemainingQty;
+    const canceledBeforeQty = Math.max(originalQty - currentRemainingQty, 0);
 
     const selectionItem = resolveShopMypageOrderCancelSelectionItem(selectionMap, detailItem);
     const cancelQty = selectionItem.selected ? clampShopMypageOrderCancelQty(detailItem, selectionItem.cancelQty) : 0;
@@ -324,10 +351,13 @@ export function buildShopMypageOrderCancelPreviewResult(
     if (cancelQty > 0) {
       selectedItemCount += 1;
       selectedQtyCount += cancelQty;
-      accumulateCancelPreviewSummary(cancelPreviewSummary, buildShopMypageOrderSliceAmount(detailItem, cancelQty));
+      accumulateCancelPreviewSummary(cancelPreviewSummary, buildShopMypageOrderSliceAmount(detailItem, cancelQty, canceledBeforeQty));
     }
     if (remainingQty > 0) {
-      accumulateOrderAmountSummary(remainingAmountSummary, buildShopMypageOrderSliceAmount(detailItem, remainingQty));
+      accumulateOrderAmountSummary(
+        remainingAmountSummary,
+        buildShopMypageOrderSliceAmount(detailItem, remainingQty, canceledBeforeQty),
+      );
     }
   }
 
@@ -364,6 +394,7 @@ export function buildShopMypageOrderCancelPreviewResult(
 
   // 취소 미리보기 표에 표시할 환급 혜택/배송비 조정/최종 금액을 계산합니다.
   const deliveryCouponRefundAmt = isFullCancel ? originalDeliveryCouponDiscountAmt : 0;
+  const paidDeliveryFeeRefundAmt = isFullCancel ? Math.max(originalBaseDeliveryFee - originalDeliveryCouponDiscountAmt, 0) : 0;
   const shippingDeductionAmt =
     !isFullCancel &&
     selectedItemCount > 0 &&
@@ -381,15 +412,16 @@ export function buildShopMypageOrderCancelPreviewResult(
     0,
   );
   cancelPreviewSummary.benefitAmt = cancelPreviewSummary.totalPointRefundAmt + deliveryCouponRefundAmt;
-  cancelPreviewSummary.shippingAdjustmentAmt = deliveryCouponRefundAmt - shippingDeductionAmt;
+  cancelPreviewSummary.shippingAdjustmentAmt = paidDeliveryFeeRefundAmt - shippingDeductionAmt;
   cancelPreviewSummary.expectedRefundAmt =
-    cancelPreviewSummary.paidGoodsAmt + cancelPreviewSummary.benefitAmt - shippingDeductionAmt;
+    cancelPreviewSummary.paidGoodsAmt + cancelPreviewSummary.benefitAmt + cancelPreviewSummary.shippingAdjustmentAmt;
+  const cashRefundAmt = cancelPreviewSummary.paidGoodsAmt + cancelPreviewSummary.shippingAdjustmentAmt;
 
   // 취소신청 가능 여부와 차단 메시지를 계산합니다.
   let submitBlockMessage = "";
   if (selectedItemCount < 1 || selectedQtyCount < 1) {
     submitBlockMessage = "취소할 상품을 선택해주세요.";
-  } else if (cancelPreviewSummary.expectedRefundAmt < 0) {
+  } else if (cashRefundAmt < 0) {
     submitBlockMessage = "배송비 차감 후 취소 예정 금액이 0원 미만이라 신청할 수 없습니다.";
   }
 
@@ -399,6 +431,7 @@ export function buildShopMypageOrderCancelPreviewResult(
     isFullCancel,
     selectedItemCount,
     selectedQtyCount,
+    cashRefundAmt,
     canSubmit: submitBlockMessage === "",
     submitBlockMessage,
   };

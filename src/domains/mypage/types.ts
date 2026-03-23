@@ -109,6 +109,41 @@ export interface ShopMypageOrderCancelPageResponse {
   siteInfo: ShopMypageOrderCancelSiteInfo;
 }
 
+// 마이페이지 주문취소 제출용 미리보기 금액 타입입니다.
+export interface ShopMypageOrderCancelPreviewAmount {
+  expectedRefundAmt: number;
+  paidGoodsAmt: number;
+  benefitAmt: number;
+  shippingAdjustmentAmt: number;
+  totalPointRefundAmt: number;
+  deliveryCouponRefundAmt: number;
+}
+
+// 마이페이지 주문취소 제출 주문상품 아이템 타입입니다.
+export interface ShopMypageOrderCancelSubmitItem {
+  ordDtlNo: number;
+  cancelQty: number;
+}
+
+// 마이페이지 주문취소 제출 요청 타입입니다.
+export interface ShopMypageOrderCancelSubmitRequest {
+  ordNo: string;
+  reasonCd: string;
+  reasonDetail: string;
+  cancelItemList: ShopMypageOrderCancelSubmitItem[];
+  previewAmount: ShopMypageOrderCancelPreviewAmount;
+}
+
+// 마이페이지 주문취소 제출 응답 타입입니다.
+export interface ShopMypageOrderCancelSubmitResponse {
+  clmNo: string;
+  ordNo: string;
+  refundPayNo: number;
+  payStatCd: string;
+  refundedCashAmt: number;
+  restoredPointAmt: number;
+}
+
 // 마이페이지 쿠폰함 보유 쿠폰 아이템 타입입니다.
 export interface ShopMypageOwnedCouponItem {
   custCpnNo: number;

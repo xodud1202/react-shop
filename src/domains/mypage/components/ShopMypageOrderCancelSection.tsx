@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type {
   ShopMypageOrderAmountSummary,
   ShopMypageOrderCancelPageResponse,
+  ShopMypageOrderCancelSubmitRequest,
+  ShopMypageOrderCancelSubmitResponse,
   ShopMypageOrderDetailItem,
 } from "@/domains/mypage/types";
 import { formatShopMypageOrderPrice } from "@/domains/mypage/utils/shopMypageOrder";
@@ -27,6 +30,38 @@ import styles from "./ShopMypageOrderSection.module.css";
 interface ShopMypageOrderCancelSectionProps {
   orderCancelPageData: ShopMypageOrderCancelPageResponse;
   initialOrdDtlNo?: number;
+}
+
+// 현재 선택 상태를 주문취소 제출용 주문상품 목록으로 변환합니다.
+function buildShopMypageOrderCancelSubmitItemList(
+  detailList: ShopMypageOrderDetailItem[],
+  selectionMap: ShopMypageOrderCancelSelectionMap,
+): ShopMypageOrderCancelSubmitRequest["cancelItemList"] {
+  return detailList.flatMap((detailItem) => {
+    const selectionItem = resolveShopMypageOrderCancelSelectionItem(selectionMap, detailItem);
+    if (!selectionItem.selected || selectionItem.cancelQty < 1) {
+      return [];
+    }
+    return [
+      {
+        ordDtlNo: detailItem.ordDtlNo,
+        cancelQty: selectionItem.cancelQty,
+      },
+    ];
+  });
+}
+
+// 주문취소 API 응답에서 사용자 표시용 메시지를 안전하게 추출합니다.
+async function readShopMypageOrderCancelResponseMessage(response: Response): Promise<string> {
+  try {
+    const responseBody = (await response.json()) as { message?: string } | null;
+    if (typeof responseBody?.message === "string" && responseBody.message.trim() !== "") {
+      return responseBody.message;
+    }
+  } catch {
+    return "";
+  }
+  return "";
 }
 
 // 일반 금액 문자열을 `-#,###원` 또는 `#,###원` 형식으로 변환합니다.
@@ -198,6 +233,7 @@ export default function ShopMypageOrderCancelSection({
   orderCancelPageData,
   initialOrdDtlNo,
 }: ShopMypageOrderCancelSectionProps) {
+  const router = useRouter();
   const { order, amountSummary, reasonList, siteInfo } = orderCancelPageData;
   const cancelTarget = resolveShopMypageOrderCancelTarget(order, initialOrdDtlNo);
   const [cancelMode] = useState<ShopMypageOrderCancelMode>(cancelTarget.cancelMode);
@@ -206,6 +242,7 @@ export default function ShopMypageOrderCancelSection({
   );
   const [selectedReasonCd, setSelectedReasonCd] = useState<string>("");
   const [reasonDetail, setReasonDetail] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // 주문 정보가 없으면 빈 화면을 반환합니다.
   if (!order) {
@@ -231,7 +268,7 @@ export default function ShopMypageOrderCancelSection({
         ? "기타 사유를 입력해주세요."
         : "";
   const submitMessage = reasonValidationMessage !== "" ? reasonValidationMessage : cancelPreviewResult.submitBlockMessage;
-  const submitDisabled = reasonValidationMessage !== "" || !cancelPreviewResult.canSubmit;
+  const submitDisabled = isSubmitting || reasonValidationMessage !== "" || !cancelPreviewResult.canSubmit;
 
   // 전체선택 체크박스 변경 시 부분취소 가능 상품만 일괄 선택/해제합니다.
   const handleToggleAll = (checked: boolean): void => {
@@ -287,13 +324,58 @@ export default function ShopMypageOrderCancelSection({
     });
   };
 
-  // 취소신청 버튼 클릭 시 클라이언트 검증만 수행하고 준비중 안내를 노출합니다.
-  const handleSubmit = (): void => {
+  // 취소신청 버튼 클릭 시 서버 재검증과 실제 취소 처리를 요청합니다.
+  const handleSubmit = async (): Promise<void> => {
     if (submitDisabled) {
       window.alert(submitMessage || "취소 정보를 확인해주세요.");
       return;
     }
-    window.alert("준비중입니다.");
+    const cancelItemList = buildShopMypageOrderCancelSubmitItemList(order.detailList, selectionMap);
+    if (cancelItemList.length < 1) {
+      window.alert("취소할 상품을 선택해주세요.");
+      return;
+    }
+
+    const requestBody: ShopMypageOrderCancelSubmitRequest = {
+      ordNo: order.ordNo,
+      reasonCd: selectedReasonCd,
+      reasonDetail: reasonDetail.trim(),
+      cancelItemList,
+      previewAmount: {
+        expectedRefundAmt: cancelPreviewResult.cancelPreviewSummary.expectedRefundAmt,
+        paidGoodsAmt: cancelPreviewResult.cancelPreviewSummary.paidGoodsAmt,
+        benefitAmt: cancelPreviewResult.cancelPreviewSummary.benefitAmt,
+        shippingAdjustmentAmt: cancelPreviewResult.cancelPreviewSummary.shippingAdjustmentAmt,
+        totalPointRefundAmt: cancelPreviewResult.cancelPreviewSummary.totalPointRefundAmt,
+        deliveryCouponRefundAmt: cancelPreviewResult.cancelPreviewSummary.deliveryCouponRefundAmt,
+      },
+    };
+
+    // 현재 화면 계산값을 포함해 주문취소 API를 호출하고, 실패 메시지는 alert로 노출합니다.
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/shop/mypage/order/cancel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+      if (!response.ok) {
+        const responseMessage = await readShopMypageOrderCancelResponseMessage(response);
+        window.alert(responseMessage || (response.status === 409 ? "환불 금액이 상이합니다." : "주문취소 처리에 실패했습니다."));
+        return;
+      }
+
+      const result = (await response.json()) as ShopMypageOrderCancelSubmitResponse;
+      window.alert("주문취소가 완료되었습니다.");
+      router.replace(`/mypage/order/${result.ordNo}`);
+      router.refresh();
+    } catch {
+      window.alert("주문취소 처리에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
