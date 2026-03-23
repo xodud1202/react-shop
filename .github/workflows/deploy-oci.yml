@@ -43,4 +43,4 @@ jobs:
 
       - name: 서버 빌드 및 PM2 재시작
         run: |
-          ssh ${{ secrets.OCI_USER }}@${{ secrets.OCI_HOST }} "sudo -i bash -lc 'set -e; [ -x \"${{ secrets.OCI_NODE_BIN }}\" ] || { echo OCI_NODE_BIN invalid; exit 127; }; export PATH=\$(dirname \"${{ secrets.OCI_NODE_BIN }}\"):\$PATH; cd /opt/react-shop; npm run build; pm2 restart ecosystem.config.js --update-env'"
+          ssh ${{ secrets.OCI_USER }}@${{ secrets.OCI_HOST }} "sudo -i bash -lc 'set -e; [ -x \"${{ secrets.OCI_NODE_BIN }}\" ] || { echo OCI_NODE_BIN invalid; exit 127; }; export PATH=\$(dirname \"${{ secrets.OCI_NODE_BIN }}\"):\$PATH; cd /opt/react-shop; npm ci; npm run build; pm2 restart ecosystem.config.js --update-env'"
