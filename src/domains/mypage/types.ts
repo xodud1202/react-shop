@@ -27,9 +27,13 @@ export interface ShopMypageOrderDetailItem {
   goodsNm: string;
   sizeId: string;
   ordQty: number;
+  cancelableQty: number;
   supplyAmt: number;
   saleAmt: number;
   addAmt: number;
+  goodsCouponDiscountAmt: number;
+  cartCouponDiscountAmt: number;
+  pointUseAmt: number;
   imgPath: string;
   imgUrl: string;
 }
@@ -82,6 +86,27 @@ export interface ShopMypageOrderAmountSummary {
 export interface ShopMypageOrderDetailPageResponse {
   order: ShopMypageOrderGroup | null;
   amountSummary: ShopMypageOrderAmountSummary;
+}
+
+// 마이페이지 주문취소 사유 코드 아이템 타입입니다.
+export interface ShopMypageOrderCancelReasonItem {
+  cd: string;
+  cdNm: string;
+}
+
+// 마이페이지 주문취소 화면 배송 기준 타입입니다.
+export interface ShopMypageOrderCancelSiteInfo {
+  siteId: string;
+  deliveryFee: number;
+  deliveryFeeLimit: number;
+}
+
+// 마이페이지 주문취소 신청 화면 응답 타입입니다.
+export interface ShopMypageOrderCancelPageResponse {
+  order: ShopMypageOrderGroup | null;
+  amountSummary: ShopMypageOrderAmountSummary;
+  reasonList: ShopMypageOrderCancelReasonItem[];
+  siteInfo: ShopMypageOrderCancelSiteInfo;
 }
 
 // 마이페이지 쿠폰함 보유 쿠폰 아이템 타입입니다.

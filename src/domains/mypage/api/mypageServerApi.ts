@@ -3,6 +3,9 @@ import type {
   ShopMypageCouponUnavailableGoodsItem,
   ShopMypageDownloadableCouponItem,
   ShopMypageOrderAmountSummary,
+  ShopMypageOrderCancelPageResponse,
+  ShopMypageOrderCancelReasonItem,
+  ShopMypageOrderCancelSiteInfo,
   ShopMypageOrderDetailItem,
   ShopMypageOrderDetailPageResponse,
   ShopMypageOrderGroup,
@@ -83,6 +86,15 @@ function createDefaultShopMypageOrderAmountSummary(): ShopMypageOrderAmountSumma
   };
 }
 
+// 마이페이지 주문취소 화면 배송 기준 기본 응답값을 생성합니다.
+function createDefaultShopMypageOrderCancelSiteInfo(): ShopMypageOrderCancelSiteInfo {
+  return {
+    siteId: "",
+    deliveryFee: 0,
+    deliveryFeeLimit: 0,
+  };
+}
+
 // 정수형 숫자값을 0 이상의 값으로 보정합니다.
 function normalizeNonNegativeNumber(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -128,9 +140,13 @@ function normalizeShopMypageOrderDetailItem(rawItem: unknown): ShopMypageOrderDe
     goodsNm: normalizeString(source.goodsNm),
     sizeId: normalizeString(source.sizeId),
     ordQty: normalizeNonNegativeNumber(source.ordQty),
+    cancelableQty: normalizeNonNegativeNumber(source.cancelableQty),
     supplyAmt: normalizeNonNegativeNumber(source.supplyAmt),
     saleAmt: normalizeNonNegativeNumber(source.saleAmt),
     addAmt: normalizeNonNegativeNumber(source.addAmt),
+    goodsCouponDiscountAmt: normalizeNonNegativeNumber(source.goodsCouponDiscountAmt),
+    cartCouponDiscountAmt: normalizeNonNegativeNumber(source.cartCouponDiscountAmt),
+    pointUseAmt: normalizeNonNegativeNumber(source.pointUseAmt),
     imgPath: normalizeString(source.imgPath),
     imgUrl: normalizeString(source.imgUrl),
   };
@@ -185,6 +201,25 @@ function normalizeShopMypageOrderAmountSummary(rawValue: unknown): ShopMypageOrd
     deliveryFeeAmt: normalizeNonNegativeNumber(source.deliveryFeeAmt),
     deliveryCouponDiscountAmt: normalizeNonNegativeNumber(source.deliveryCouponDiscountAmt),
     finalPayAmt: normalizeNonNegativeNumber(source.finalPayAmt),
+  };
+}
+
+// 주문취소 사유 코드 응답 행을 기본값과 함께 정규화합니다.
+function normalizeShopMypageOrderCancelReasonItem(rawItem: unknown): ShopMypageOrderCancelReasonItem {
+  const source = (rawItem ?? {}) as Partial<ShopMypageOrderCancelReasonItem>;
+  return {
+    cd: normalizeString(source.cd),
+    cdNm: normalizeString(source.cdNm),
+  };
+}
+
+// 주문취소 화면 배송 기준 응답을 기본값과 함께 정규화합니다.
+function normalizeShopMypageOrderCancelSiteInfo(rawValue: unknown): ShopMypageOrderCancelSiteInfo {
+  const source = (rawValue ?? {}) as Partial<ShopMypageOrderCancelSiteInfo>;
+  return {
+    siteId: normalizeString(source.siteId),
+    deliveryFee: normalizeNonNegativeNumber(source.deliveryFee),
+    deliveryFeeLimit: normalizeNonNegativeNumber(source.deliveryFeeLimit),
   };
 }
 
@@ -277,6 +312,16 @@ function buildShopMypageOrderDetailPagePath(ordNo: string): string {
   const queryParams = new URLSearchParams();
   queryParams.set("ordNo", normalizeString(ordNo));
   return `/api/shop/mypage/order/detail?${queryParams.toString()}`;
+}
+
+// 마이페이지 주문취소 신청 화면 API 경로를 생성합니다.
+function buildShopMypageOrderCancelPagePath(ordNo: string, ordDtlNo?: number): string {
+  const queryParams = new URLSearchParams();
+  queryParams.set("ordNo", normalizeString(ordNo));
+  if (typeof ordDtlNo === "number" && Number.isFinite(ordDtlNo) && ordDtlNo > 0) {
+    queryParams.set("ordDtlNo", String(Math.floor(ordDtlNo)));
+  }
+  return `/api/shop/mypage/order/cancel/page?${queryParams.toString()}`;
 }
 
 // 마이페이지 개별 쿠폰 다운로드 API 경로를 반환합니다.
@@ -441,5 +486,40 @@ export async function fetchShopMypageOrderDetailPageServerData(
     amountSummary: response.amountSummary
       ? normalizeShopMypageOrderAmountSummary(response.amountSummary)
       : defaultAmountSummary,
+  };
+}
+
+// 마이페이지 주문취소 신청 화면 SSR 데이터를 조회합니다.
+export async function fetchShopMypageOrderCancelPageServerData(
+  ordNo: string,
+  ordDtlNo: number | undefined,
+  cookieHeader: string,
+): Promise<ShopMypageOrderCancelPageResponse | null> {
+  // 주문취소 신청 화면 API 경로를 생성해 응답을 조회합니다.
+  const path = buildShopMypageOrderCancelPagePath(ordNo, ordDtlNo);
+  const requestInit = cookieHeader.trim() === "" ? undefined : { headers: { cookie: cookieHeader } };
+  const response = await readShopServerApiResponse<ShopMypageOrderCancelPageResponse>(path, requestInit);
+  const defaultAmountSummary = createDefaultShopMypageOrderAmountSummary();
+  const defaultSiteInfo = createDefaultShopMypageOrderCancelSiteInfo();
+
+  // 응답이 없거나 주문번호가 유효하지 않으면 null을 반환합니다.
+  if (!response) {
+    return null;
+  }
+
+  const normalizedOrder = response.order ? normalizeShopMypageOrderGroup(response.order) : null;
+  if (!normalizedOrder || normalizedOrder.ordNo.trim() === "") {
+    return null;
+  }
+
+  return {
+    order: normalizedOrder,
+    amountSummary: response.amountSummary
+      ? normalizeShopMypageOrderAmountSummary(response.amountSummary)
+      : defaultAmountSummary,
+    reasonList: Array.isArray(response.reasonList)
+      ? response.reasonList.map((item) => normalizeShopMypageOrderCancelReasonItem(item))
+      : [],
+    siteInfo: response.siteInfo ? normalizeShopMypageOrderCancelSiteInfo(response.siteInfo) : defaultSiteInfo,
   };
 }

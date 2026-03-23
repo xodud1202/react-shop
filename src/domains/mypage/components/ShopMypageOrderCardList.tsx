@@ -9,6 +9,7 @@ import {
   formatShopMypageOrderDateLabel,
   formatShopMypageOrderPrice,
   resolveShopMypageOrderActionLabelList,
+  resolveShopMypageOrderActionHref,
   resolveShopMypageOrderDetailAmount,
 } from "@/domains/mypage/utils/shopMypageOrder";
 import styles from "./ShopMypageOrderSection.module.css";
@@ -19,7 +20,7 @@ interface ShopMypageOrderCardListProps {
   enableOrderDetailLink?: boolean;
 }
 
-// 주문번호/액션 버튼 placeholder alert를 노출합니다.
+// 링크가 없는 주문 액션 버튼에 placeholder alert를 노출합니다.
 function showPreparingAlert(): void {
   window.alert("준비중입니다.");
 }
@@ -101,16 +102,34 @@ export default function ShopMypageOrderCardList({
 
                   <div className={styles.actionArea}>
                     {actionLabelList.length > 0 ? (
-                      actionLabelList.map((actionLabel) => (
-                        <button
-                          key={`${detailItem.ordNo}-${detailItem.ordDtlNo}-${actionLabel}`}
-                          type="button"
-                          className={styles.actionButton}
-                          onClick={showPreparingAlert}
-                        >
-                          {actionLabel}
-                        </button>
-                      ))
+                      actionLabelList.map((actionLabel) => {
+                        const actionHref = resolveShopMypageOrderActionHref(
+                          detailItem.ordNo,
+                          detailItem.ordDtlNo,
+                          actionLabel,
+                        );
+                        if (actionHref) {
+                          return (
+                            <Link
+                              key={`${detailItem.ordNo}-${detailItem.ordDtlNo}-${actionLabel}`}
+                              href={actionHref}
+                              className={styles.actionButton}
+                            >
+                              {actionLabel}
+                            </Link>
+                          );
+                        }
+                        return (
+                          <button
+                            key={`${detailItem.ordNo}-${detailItem.ordDtlNo}-${actionLabel}`}
+                            type="button"
+                            className={styles.actionButton}
+                            onClick={showPreparingAlert}
+                          >
+                            {actionLabel}
+                          </button>
+                        );
+                      })
                     ) : (
                       <span className={styles.noActionLabel}>-</span>
                     )}

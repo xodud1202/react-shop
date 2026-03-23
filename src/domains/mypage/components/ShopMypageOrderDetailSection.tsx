@@ -3,22 +3,10 @@ import {
   createShopMypageOrderPolicyList,
   formatShopMypageOrderPrice,
 } from "@/domains/mypage/utils/shopMypageOrder";
+import type { ShopMypageOrderAmountTableColumn } from "./ShopMypageOrderAmountTable";
+import ShopMypageOrderAmountTable from "./ShopMypageOrderAmountTable";
 import ShopMypageOrderCardList from "./ShopMypageOrderCardList";
 import styles from "./ShopMypageOrderSection.module.css";
-
-interface ShopMypageOrderAmountCell {
-  key: string;
-  label: string;
-  amount: number;
-  note?: string;
-  isStrong?: boolean;
-}
-
-interface ShopMypageOrderAmountColumn {
-  key: string;
-  title: string;
-  itemList: ShopMypageOrderAmountCell[];
-}
 
 interface ShopMypageOrderDetailSectionProps {
   orderDetailPageData: ShopMypageOrderDetailPageResponse;
@@ -36,7 +24,7 @@ function resolveShopMypageOrderBenefitDiscountAmt(amountSummary: ShopMypageOrder
 // 주문상세 결제 금액 표 컬럼 목록을 생성합니다.
 function createShopMypageOrderAmountColumnList(
   amountSummary: ShopMypageOrderAmountSummary,
-): ShopMypageOrderAmountColumn[] {
+): ShopMypageOrderAmountTableColumn[] {
   const benefitDiscountAmt = resolveShopMypageOrderBenefitDiscountAmt(amountSummary);
   const deliveryCouponNote =
     amountSummary.deliveryCouponDiscountAmt > 0
@@ -48,8 +36,12 @@ function createShopMypageOrderAmountColumnList(
       key: "goodsPrice",
       title: "상품가격",
       itemList: [
-        { key: "totalSupplyAmt", label: "상품가격", amount: amountSummary.totalSupplyAmt },
-        { key: "totalGoodsDiscountAmt", label: "상품할인", amount: amountSummary.totalGoodsDiscountAmt },
+        { key: "totalSupplyAmt", label: "상품가격", valueText: `${formatShopMypageOrderPrice(amountSummary.totalSupplyAmt)}원` },
+        {
+          key: "totalGoodsDiscountAmt",
+          label: "상품할인",
+          valueText: `${formatShopMypageOrderPrice(amountSummary.totalGoodsDiscountAmt)}원`,
+        },
       ],
     },
     {
@@ -59,32 +51,32 @@ function createShopMypageOrderAmountColumnList(
         {
           key: "totalGoodsCouponDiscountAmt",
           label: "상품쿠폰",
-          amount: amountSummary.totalGoodsCouponDiscountAmt,
+          valueText: `${formatShopMypageOrderPrice(amountSummary.totalGoodsCouponDiscountAmt)}원`,
         },
         {
           key: "totalCartCouponDiscountAmt",
           label: "장바구니쿠폰",
-          amount: amountSummary.totalCartCouponDiscountAmt,
+          valueText: `${formatShopMypageOrderPrice(amountSummary.totalCartCouponDiscountAmt)}원`,
         },
-        { key: "totalPointUseAmt", label: "포인트", amount: amountSummary.totalPointUseAmt },
+        { key: "totalPointUseAmt", label: "포인트", valueText: `${formatShopMypageOrderPrice(amountSummary.totalPointUseAmt)}원` },
       ],
     },
     {
       key: "finalAmount",
       title: "최종금액",
       itemList: [
-        { key: "totalOrderAmt", label: "상품 판매가", amount: amountSummary.totalOrderAmt },
-        { key: "benefitDiscountAmt", label: "할인 총액", amount: benefitDiscountAmt },
+        { key: "totalOrderAmt", label: "상품 판매가", valueText: `${formatShopMypageOrderPrice(amountSummary.totalOrderAmt)}원` },
+        { key: "benefitDiscountAmt", label: "할인 총액", valueText: `${formatShopMypageOrderPrice(benefitDiscountAmt)}원` },
         {
           key: "deliveryFeeAmt",
           label: "배송비",
-          amount: amountSummary.deliveryFeeAmt,
+          valueText: `${formatShopMypageOrderPrice(amountSummary.deliveryFeeAmt)}원`,
           note: deliveryCouponNote,
         },
         {
           key: "finalPayAmt",
           label: "결제금액",
-          amount: amountSummary.finalPayAmt,
+          valueText: `${formatShopMypageOrderPrice(amountSummary.finalPayAmt)}원`,
           isStrong: true,
         },
       ],
@@ -122,28 +114,7 @@ export default function ShopMypageOrderDetailSection({ orderDetailPageData }: Sh
 
       <section className={styles.detailSectionBlock}>
         <h2 className={styles.detailSectionTitle}>상세 결제 금액</h2>
-        <div className={styles.detailAmountTable}>
-          {amountColumnList.map((amountColumn) => (
-            <section key={amountColumn.key} className={styles.detailAmountColumn}>
-              <h3 className={styles.detailAmountColumnTitle}>{amountColumn.title}</h3>
-              <div className={styles.detailAmountItemList}>
-                {amountColumn.itemList.map((amountItem) => (
-                  <div key={amountItem.key} className={styles.detailAmountItem}>
-                    <span className={styles.detailAmountLabel}>{amountItem.label}</span>
-                    <div className={styles.detailAmountValueWrap}>
-                      <span
-                        className={`${styles.detailAmountValue} ${amountItem.isStrong ? styles.detailAmountValueStrong : ""}`}
-                      >
-                        {formatShopMypageOrderPrice(amountItem.amount)}원
-                      </span>
-                      {amountItem.note ? <span className={styles.detailAmountNote}>{amountItem.note}</span> : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        <ShopMypageOrderAmountTable columnList={amountColumnList} />
       </section>
 
       <section className={styles.detailSectionBlock}>

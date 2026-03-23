@@ -56,6 +56,14 @@ export function buildShopMypageOrderDetailHref(ordNo: string): string {
   return `/mypage/order/${encodeURIComponent(normalizedOrdNo)}`;
 }
 
+// 주문번호/주문상세번호 기준 주문취소 신청 화면 링크를 생성합니다.
+export function buildShopMypageOrderCancelHref(ordNo: string, ordDtlNo: number): string {
+  const normalizedOrdNo = ordNo.trim();
+  const queryParams = new URLSearchParams();
+  queryParams.set("ordDtlNo", String(Math.max(Math.floor(ordDtlNo), 1)));
+  return `/mypage/order/${encodeURIComponent(normalizedOrdNo)}/cancel?${queryParams.toString()}`;
+}
+
 // 주문상세 상태코드 기준 우측 액션 버튼 목록을 반환합니다.
 export function resolveShopMypageOrderActionLabelList(ordDtlStatCd: string): string[] {
   if (ordDtlStatCd === "ORD_DTL_STAT_01" || ordDtlStatCd === "ORD_DTL_STAT_02") {
@@ -74,6 +82,18 @@ export function resolveShopMypageOrderActionLabelList(ordDtlStatCd: string): str
     return ["1:1문의"];
   }
   return [];
+}
+
+// 주문 액션 라벨별 이동 링크를 반환합니다.
+export function resolveShopMypageOrderActionHref(
+  ordNo: string,
+  ordDtlNo: number,
+  actionLabel: string,
+): string | null {
+  if (actionLabel === "주문 취소") {
+    return buildShopMypageOrderCancelHref(ordNo, ordDtlNo);
+  }
+  return null;
 }
 
 // 상태 요약 응답을 카드 렌더링용 목록으로 변환합니다.
