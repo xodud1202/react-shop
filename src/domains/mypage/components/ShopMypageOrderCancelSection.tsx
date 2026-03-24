@@ -214,7 +214,7 @@ function createCancelPreviewAmountColumnList(
         },
         {
           key: "shippingAdjustmentAmt",
-          label: "배송비 조정",
+          label: "배송비",
           valueText: formatShopMypageOrderSignedAmountText(cancelPreviewSummary.shippingAdjustmentAmt),
         },
         {

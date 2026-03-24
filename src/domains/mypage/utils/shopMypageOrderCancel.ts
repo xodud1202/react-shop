@@ -392,7 +392,7 @@ export function buildShopMypageOrderCancelPreviewResult(
     0,
   );
 
-  // 취소 미리보기 표에 표시할 환급 혜택/배송비 조정/최종 금액을 계산합니다.
+  // 취소 미리보기 표에 표시할 환급 혜택 합계/배송비/취소 예정 금액을 계산합니다.
   const deliveryCouponRefundAmt = isFullCancel ? originalDeliveryCouponDiscountAmt : 0;
   const paidDeliveryFeeRefundAmt = isFullCancel ? Math.max(originalBaseDeliveryFee - originalDeliveryCouponDiscountAmt, 0) : 0;
   const shippingDeductionAmt =
@@ -404,18 +404,15 @@ export function buildShopMypageOrderCancelPreviewResult(
       ? siteDeliveryFee
       : 0;
   cancelPreviewSummary.deliveryCouponRefundAmt = deliveryCouponRefundAmt;
-  cancelPreviewSummary.paidGoodsAmt = Math.max(
-    cancelPreviewSummary.totalOrderAmt -
-      cancelPreviewSummary.totalGoodsCouponDiscountAmt -
-      cancelPreviewSummary.totalCartCouponDiscountAmt -
-      cancelPreviewSummary.totalPointRefundAmt,
-    0,
-  );
-  cancelPreviewSummary.benefitAmt = cancelPreviewSummary.totalPointRefundAmt + deliveryCouponRefundAmt;
+  cancelPreviewSummary.paidGoodsAmt = cancelPreviewSummary.totalOrderAmt;
+  cancelPreviewSummary.benefitAmt =
+    cancelPreviewSummary.totalGoodsCouponDiscountAmt +
+    cancelPreviewSummary.totalCartCouponDiscountAmt +
+    cancelPreviewSummary.totalPointRefundAmt;
   cancelPreviewSummary.shippingAdjustmentAmt = paidDeliveryFeeRefundAmt - shippingDeductionAmt;
   cancelPreviewSummary.expectedRefundAmt =
-    cancelPreviewSummary.paidGoodsAmt + cancelPreviewSummary.benefitAmt + cancelPreviewSummary.shippingAdjustmentAmt;
-  const cashRefundAmt = cancelPreviewSummary.paidGoodsAmt + cancelPreviewSummary.shippingAdjustmentAmt;
+    cancelPreviewSummary.paidGoodsAmt - cancelPreviewSummary.benefitAmt + cancelPreviewSummary.shippingAdjustmentAmt;
+  const cashRefundAmt = cancelPreviewSummary.expectedRefundAmt;
 
   // 취소신청 가능 여부와 차단 메시지를 계산합니다.
   let submitBlockMessage = "";
