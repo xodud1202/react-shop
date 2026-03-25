@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# react-shop
 
-## Getting Started
+`react-shop`은 Next.js App Router 기반 쇼핑몰 프론트엔드 프로젝트입니다.  
+백엔드 호출은 `/api` 프록시를 통해 `spring-back-end`로 전달되며, 공개 페이지 캐시와 인증 페이지 동적 호출을 분리해 구성합니다.
 
-First, run the development server:
+## 실행 환경
+
+- Node.js: 프로젝트 로컬 환경 기준
+- Port: `3014`
+- Backend URL 기본값: `http://localhost:3010`
+
+## 실행 명령
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm.cmd run dev
+npm.cmd run lint
+npm.cmd run typecheck
+npm.cmd run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+개발 서버 실행 후 기본 접속 주소는 `http://127.0.0.1:3014` 입니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 주요 구조
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/app`
+  - App Router 페이지와 라우트 세그먼트 상태 컴포넌트
+- `src/domains`
+  - 도메인별 API, 컴포넌트, 타입, 유틸
+- `src/shared`
+  - 공통 서버 fetch 계층, 클라이언트 API helper, 공통 UI/SEO 유틸
 
-## Learn More
+## 현재 현대화 기준
 
-To learn more about Next.js, take a look at the following resources:
+- 공개 데이터는 공통 서버 fetch 계층에서 `revalidate`/`tag` 기반 캐시 사용
+- 인증/개인화 데이터는 `no-store` 정책 유지
+- 브라우저 API가 없는 컴포넌트는 서버 컴포넌트 우선
+- 클라이언트 mutation은 공통 `shopClientApi` helper를 통해 처리
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 검증 기준
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+아래 세 명령이 모두 성공하면 기본 검증 완료로 간주합니다.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm.cmd run lint
+npm.cmd run typecheck
+npm.cmd run build
+```

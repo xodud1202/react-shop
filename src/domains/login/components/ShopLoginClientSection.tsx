@@ -6,6 +6,7 @@ import ShopAdditionalInfoForm from "@/domains/login/components/ShopAdditionalInf
 import ShopGoogleLoginButton from "@/domains/login/components/ShopGoogleLoginButton";
 import { resolveSafeReturnUrl } from "@/domains/login/utils/loginRedirectUtils";
 import { emitShopAuthChangeEvent } from "@/shared/auth/shopAuthEvent";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import type { ShopGoogleLoginApiResponse, ShopGoogleProfile } from "@/domains/login/types";
 import styles from "./ShopLoginClientSection.module.css";
 
@@ -32,32 +33,27 @@ export default function ShopLoginClientSection({ googleClientId, returnUrl }: Sh
 
     try {
       // 백엔드에 기존 회원 여부를 조회합니다.
-      const response = await fetch("/api/shop/auth/google/login", {
+      const result = await requestShopClientApi<ShopGoogleLoginApiResponse>("/api/shop/auth/google/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
+        body: {
           sub: profile.sub,
           email: profile.email,
           name: profile.name,
           picture: profile.picture,
-        }),
+        },
       });
 
       // 비정상 응답은 에러로 처리합니다.
-      const payload = (await response.json()) as ShopGoogleLoginApiResponse;
-      if (!response.ok) {
-        throw new Error(payload.message ?? "구글 로그인 처리에 실패했습니다.");
+      if (!result.ok || !result.data) {
+        throw new Error(result.message || "구글 로그인 처리에 실패했습니다.");
       }
 
       // 기존 회원이면 홈으로 이동합니다.
-      if (payload.loginSuccess) {
+      if (result.data.loginSuccess) {
         // 로그인 성공 상태를 헤더에 즉시 반영합니다.
         emitShopAuthChangeEvent({
           isLoggedIn: true,
-          custNo: payload.custNo ? String(payload.custNo) : "",
+          custNo: result.data.custNo ? String(result.data.custNo) : "",
         });
         router.replace(safeReturnUrl);
         router.refresh();
@@ -65,10 +61,14 @@ export default function ShopLoginClientSection({ googleClientId, returnUrl }: Sh
       }
 
       // 신규 회원이면 같은 페이지에서 추가 정보 입력 폼을 노출합니다.
-      if (payload.joinRequired) {
-        setRecommendedLoginId(typeof payload.loginId === "string" ? payload.loginId : `google_${profile.sub}`);
+      if (result.data.joinRequired) {
+        setRecommendedLoginId(typeof result.data.loginId === "string" ? result.data.loginId : `google_${profile.sub}`);
         setMessage("기존 회원 정보가 없어 추가 정보 입력이 필요합니다.");
+        return;
       }
+
+      // 기타 응답은 실패로 처리합니다.
+      throw new Error(result.message || "구글 로그인 처리에 실패했습니다.");
     } catch (error) {
       // 오류가 발생하면 안내 문구를 노출합니다.
       setMessage(error instanceof Error ? error.message : "구글 로그인 처리에 실패했습니다.");

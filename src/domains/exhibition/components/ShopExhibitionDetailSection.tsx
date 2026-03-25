@@ -7,6 +7,7 @@ import type {
   ShopExhibitionGoodsItem,
   ShopExhibitionGoodsPageResponse,
 } from "@/domains/exhibition/types";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import ShopExhibitionInvalidRedirect from "@/domains/exhibition/components/ShopExhibitionInvalidRedirect";
 import styles from "./ShopExhibitionDetailSection.module.css";
 
@@ -177,14 +178,16 @@ export default function ShopExhibitionDetailSection({
   const requestGoodsPage = async (tabNo: number, pageNo: number): Promise<ShopExhibitionGoodsPageRequestResult> => {
     try {
       // 동일 출처 API를 no-store 정책으로 호출합니다.
-      const response = await fetch(buildExhibitionGoodsPath(detailData.exhibitionNo, tabNo, pageNo), {
-        method: "GET",
-        cache: "no-store",
-        credentials: "include",
-      });
+      const result = await requestShopClientApi<ShopExhibitionGoodsPageResponse>(
+        buildExhibitionGoodsPath(detailData.exhibitionNo, tabNo, pageNo),
+        {
+          method: "GET",
+          cache: "no-store",
+        },
+      );
 
       // 404는 뒤로가기/fallback 처리 대상이므로 상태코드만 반환합니다.
-      if (response.status === 404) {
+      if (result.status === 404) {
         return {
           ok: false,
           status: 404,
@@ -193,20 +196,19 @@ export default function ShopExhibitionDetailSection({
       }
 
       // 기타 비정상 응답은 실패로 반환합니다.
-      if (!response.ok) {
+      if (!result.ok) {
         return {
           ok: false,
-          status: response.status,
+          status: result.status,
           data: null,
         };
       }
 
       // 정상 응답 본문을 정규화해 반환합니다.
-      const payload = (await response.json().catch(() => null)) as unknown;
       return {
         ok: true,
-        status: response.status,
-        data: normalizeGoodsPageResponse(payload),
+        status: result.status,
+        data: normalizeGoodsPageResponse(result.data),
       };
     } catch {
       // 네트워크 오류는 일반 실패로 반환합니다.

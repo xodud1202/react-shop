@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { resolveSafeReturnUrl } from "@/domains/login/utils/loginRedirectUtils";
 import { emitShopAuthChangeEvent } from "@/shared/auth/shopAuthEvent";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import { PRIVATE_POLICY_PARAGRAPHS, TERMS_PARAGRAPHS } from "@/domains/policy/constants/policyDocuments";
 import type { ShopGoogleJoinApiRequest, ShopGoogleJoinApiResponse, ShopGoogleProfile } from "@/domains/login/types";
 import {
@@ -117,27 +118,20 @@ export default function ShopAdditionalInfoForm({ profile, recommendedLoginId, re
       };
 
       // 백엔드 회원가입 API를 호출합니다.
-      const response = await fetch("/api/shop/auth/google/join", {
+      const result = await requestShopClientApi<ShopGoogleJoinApiResponse>("/api/shop/auth/google/join", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(joinRequest),
+        body: joinRequest,
       });
-
-      // 응답 본문을 파싱해 에러/성공 상태를 판별합니다.
-      const payload = (await response.json()) as ShopGoogleJoinApiResponse;
-      if (!response.ok) {
-        throw new Error(payload.message ?? "구글 회원가입 처리에 실패했습니다.");
+      if (!result.ok || !result.data) {
+        throw new Error(result.message || "구글 회원가입 처리에 실패했습니다.");
       }
 
       // 회원가입 후 로그인 성공이면 홈 화면으로 이동합니다.
-      if (payload.loginSuccess) {
+      if (result.data.loginSuccess) {
         // 로그인 성공 상태를 헤더에 즉시 반영합니다.
         emitShopAuthChangeEvent({
           isLoggedIn: true,
-          custNo: payload.custNo ? String(payload.custNo) : "",
+          custNo: result.data.custNo ? String(result.data.custNo) : "",
         });
         router.replace(safeReturnUrl);
         router.refresh();
@@ -145,7 +139,7 @@ export default function ShopAdditionalInfoForm({ profile, recommendedLoginId, re
       }
 
       // 성공 응답인데 로그인 상태가 아니면 안내 문구를 노출합니다.
-      throw new Error(payload.message ?? "회원가입 처리에 실패했습니다.");
+      throw new Error(result.message || "회원가입 처리에 실패했습니다.");
     } catch (error) {
       // 예외 발생 시 화면에 실패 문구를 노출합니다.
       setMessage(error instanceof Error ? error.message : "회원가입 처리에 실패했습니다.");

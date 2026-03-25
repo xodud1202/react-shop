@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import styles from "./ShopMypageMainHeader.module.css";
 
 interface ShopSessionRefreshResponse {
@@ -32,24 +33,22 @@ export default function ShopMypageMainHeader() {
     const fetchMypageMemberInfo = async (): Promise<void> => {
       try {
         // 세션 갱신 API 응답에서 고객명/등급명 정보를 가져옵니다.
-        const response = await fetch("/api/shop/auth/session/refresh", {
+        const result = await requestShopClientApi<ShopSessionRefreshResponse>("/api/shop/auth/session/refresh", {
           method: "POST",
-          credentials: "include",
           cache: "no-store",
         });
-        if (!response.ok || !isSubscribed) {
+        if (!result.ok || !result.data || !isSubscribed) {
           return;
         }
 
         // 인증 상태인 경우에만 타이틀 정보를 업데이트합니다.
-        const payload = (await response.json()) as ShopSessionRefreshResponse;
-        if (payload.authenticated !== true) {
+        if (result.data.authenticated !== true) {
           return;
         }
 
         // 등급명 미존재 시 등급코드로 대체해 화면 문구를 보정합니다.
-        setCustNm(resolveDisplayText(payload.custNm, ""));
-        setCustGradeNm(resolveDisplayText(payload.custGradeNm, resolveDisplayText(payload.custGradeCd, "")));
+        setCustNm(resolveDisplayText(result.data.custNm, ""));
+        setCustGradeNm(resolveDisplayText(result.data.custGradeNm, resolveDisplayText(result.data.custGradeCd, "")));
       } catch {
         // 네트워크 오류는 화면을 막지 않고 빈 상태로 유지합니다.
       } finally {

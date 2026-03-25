@@ -5,16 +5,13 @@ import ShopHeader from "@/domains/header/components/ShopHeader";
 import ShopFooter from "@/domains/footer/components/ShopFooter";
 import ShopSessionKeeper from "@/domains/login/components/ShopSessionKeeper";
 import { fetchShopHeaderServerData } from "@/domains/header/api/headerServerApi";
-import "react-quill-new/dist/quill.snow.css";
+import { createShopPageMetadata } from "@/shared/seo/shopMetadata";
 import "./globals.css";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 
-export const metadata: Metadata = {
-  title: "react-shop",
-  description: "style24 레퍼런스 기반 쇼핑몰 프론트",
-};
+export const metadata: Metadata = createShopPageMetadata();
 
 // react-shop 전역 레이아웃을 렌더링합니다.
 export default async function RootLayout({

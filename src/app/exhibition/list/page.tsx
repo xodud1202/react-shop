@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import ShopExhibitionListSection from "@/domains/exhibition/components/ShopExhibitionListSection";
 import styles from "@/domains/exhibition/components/ShopExhibition.module.css";
 import { fetchShopExhibitionPageServerData } from "@/domains/exhibition/api/exhibitionServerApi";
+import { createShopPageMetadata } from "@/shared/seo/shopMetadata";
 
 interface ExhibitionListPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -39,3 +41,10 @@ export default async function ExhibitionListPage({ searchParams }: ExhibitionLis
   );
 }
 
+// 기획전 목록 페이지 메타데이터를 생성합니다.
+export function generateMetadata(): Metadata {
+  return createShopPageMetadata({
+    title: "기획전",
+    description: "진행 중인 기획전과 추천 배너를 확인할 수 있습니다.",
+  });
+}

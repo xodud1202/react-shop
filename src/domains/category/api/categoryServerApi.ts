@@ -1,5 +1,6 @@
+import { cache } from "react";
 import type { ShopCategoryPageResponse } from "@/domains/category/types";
-import { readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
+import { createShopPublicCacheOptions, readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
 
 // 카테고리 페이지 기본 응답값을 생성합니다.
 function createDefaultCategoryPageResponse(): ShopCategoryPageResponse {
@@ -39,10 +40,13 @@ function buildShopCategoryPagePath(categoryId: string, pageNo: number): string {
 }
 
 // 카테고리 화면에 필요한 데이터를 SSR에서 조회합니다.
-export async function fetchShopCategoryPageServerData(categoryId: string, pageNo: number): Promise<ShopCategoryPageResponse> {
+async function fetchShopCategoryPageServerDataInternal(categoryId: string, pageNo: number): Promise<ShopCategoryPageResponse> {
   // 카테고리 API 경로를 생성해 응답을 조회합니다.
   const path = buildShopCategoryPagePath(categoryId, pageNo);
-  const response = await readShopServerApiResponse<ShopCategoryPageResponse>(path);
+  const response = await readShopServerApiResponse<ShopCategoryPageResponse>(
+    path,
+    createShopPublicCacheOptions(["shop:category", `shop:category:${categoryId || "all"}`]),
+  );
   const defaultResponse = createDefaultCategoryPageResponse();
 
   // 응답 유효성을 확인한 뒤 기본값을 반환합니다.
@@ -64,3 +68,6 @@ export async function fetchShopCategoryPageServerData(categoryId: string, pageNo
         : defaultResponse.totalPageCount,
   };
 }
+
+// 카테고리 화면 서버 데이터를 요청 단위로 메모이징합니다.
+export const fetchShopCategoryPageServerData = cache(fetchShopCategoryPageServerDataInternal);

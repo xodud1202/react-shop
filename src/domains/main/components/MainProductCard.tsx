@@ -1,5 +1,3 @@
-"use client";
-
 import ShopGoodsCard from "@/shared/components/goods/ShopGoodsCard";
 import type { ShopMainGoodsItem } from "@/domains/main/types";
 
@@ -11,4 +9,3 @@ interface MainProductCardProps {
 export default function MainProductCard({ item }: MainProductCardProps) {
   return <ShopGoodsCard item={item} />;
 }
-

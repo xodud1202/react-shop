@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import ShopLoginClientSection from "@/domains/login/components/ShopLoginClientSection";
 import { resolveSafeReturnUrl } from "@/domains/login/utils/loginRedirectUtils";
 import { fetchShopSiteServerData } from "@/domains/site/api/siteServerApi";
+import { createShopPageMetadata } from "@/shared/seo/shopMetadata";
 import styles from "./page.module.css";
 
 interface LoginFormPageProps {
@@ -34,4 +36,15 @@ export default async function LoginFormPage({ searchParams }: LoginFormPageProps
       </div>
     </section>
   );
+}
+
+// 로그인 페이지 메타데이터를 생성합니다.
+export async function generateMetadata(): Promise<Metadata> {
+  const siteInfo = await fetchShopSiteServerData();
+  const siteName = siteInfo.siteNm.trim();
+
+  return createShopPageMetadata({
+    title: siteName !== "" ? `${siteName} 로그인` : "로그인",
+    description: "구글 계정으로 로그인하고 쇼핑몰 서비스를 이용할 수 있습니다.",
+  });
 }

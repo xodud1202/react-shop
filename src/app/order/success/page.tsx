@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { getShopOrderPaymentConfirmPath, normalizeShopOrderPaymentConfirmResponse } from "@/domains/order/api/orderApi";
 import type { ShopOrderPaymentConfirmResponse } from "@/domains/order/types";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import styles from "../payment-result.module.css";
 
 // 금액을 원화 문자열로 포맷합니다.
@@ -39,31 +40,25 @@ export default function ShopOrderSuccessPage() {
       }
 
       try {
-        const response = await fetch(getShopOrderPaymentConfirmPath(), {
+        const result = await requestShopClientApi<ShopOrderPaymentConfirmResponse>(getShopOrderPaymentConfirmPath(), {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(requestInfo),
+          body: requestInfo,
         });
-        const payload = await response.json().catch(() => null);
         if (!active) {
           return;
         }
 
-        if (response.status === 401) {
+        if (result.status === 401) {
           setErrorMessage("로그인이 필요합니다.");
           return;
         }
 
-        if (!response.ok) {
-          const message = payload && typeof payload === "object" && "message" in payload ? String(payload.message ?? "") : "";
-          setErrorMessage(message || "결제 승인 처리에 실패했습니다.");
+        if (!result.ok || !result.data) {
+          setErrorMessage(result.message || "결제 승인 처리에 실패했습니다.");
           return;
         }
 
-        setResult(normalizeShopOrderPaymentConfirmResponse(payload));
+        setResult(normalizeShopOrderPaymentConfirmResponse(result.data));
       } catch {
         if (!active) {
           return;

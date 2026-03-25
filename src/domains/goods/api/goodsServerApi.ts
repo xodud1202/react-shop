@@ -1,5 +1,5 @@
 import type { ShopGoodsDetailResponse } from "@/domains/goods/types";
-import { readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
+import { createShopPublicCacheOptions, readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
 
 // 상품상세 API 기본 응답값을 생성합니다.
 function createDefaultShopGoodsDetailResponse(goodsId: string): ShopGoodsDetailResponse {
@@ -88,7 +88,10 @@ export async function fetchShopGoodsDetailServerData(goodsId: string, cookieHead
   }
 
   const path = buildShopGoodsDetailPath(normalizedGoodsId);
-  const requestInit = cookieHeader.trim() === "" ? undefined : { headers: { cookie: cookieHeader } };
+  const requestInit =
+    cookieHeader.trim() === ""
+      ? createShopPublicCacheOptions(["shop:goods", `shop:goods:${normalizedGoodsId}`])
+      : { cookieHeader };
   const response = await readShopServerApiResponse<ShopGoodsDetailResponse>(path, requestInit);
   if (!response || !response.goods || response.goods.goodsId.trim() === "") {
     return null;

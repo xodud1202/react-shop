@@ -23,6 +23,7 @@ import type {
 } from "@/domains/cart/types";
 import { buildLoginFormPath } from "@/domains/login/utils/loginRedirectUtils";
 import { buildShopOrderPath } from "@/domains/order/utils/orderPathUtils";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import styles from "./ShopCartSection.module.css";
 
 interface ShopCartSectionProps {
@@ -309,34 +310,27 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
     const timeoutId = window.setTimeout(async () => {
       try {
         setIsCouponEstimateLoading(true);
-        const response = await fetch(getShopCartCouponEstimatePath(), {
+        const result = await requestShopClientApi<ShopCartCouponEstimateResponse>(getShopCartCouponEstimatePath(), {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
           signal: abortController.signal,
-          body: JSON.stringify(buildCouponEstimateRequest(selectedCartList)),
+          body: buildCouponEstimateRequest(selectedCartList),
         });
 
-        // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
-        const payload = await response.json().catch(() => null);
-
         // 비로그인/세션만료면 로그인 이동을 안내하고 금액은 0원으로 초기화합니다.
-        if (response.status === 401) {
+        if (result.status === 401) {
           setCouponEstimate(createDefaultShopCartCouponEstimateResponse());
           handleUnauthorizedResponse();
           return;
         }
 
         // 실패 응답이면 금액을 0원으로 초기화합니다.
-        if (!response.ok) {
+        if (!result.ok) {
           setCouponEstimate(createDefaultShopCartCouponEstimateResponse());
           return;
         }
 
         // 성공 응답을 예상 할인 계산 응답 형식으로 정규화합니다.
-        setCouponEstimate(normalizeShopCartCouponEstimateResponse(payload));
+        setCouponEstimate(normalizeShopCartCouponEstimateResponse(result.data));
       } catch (error) {
         // AbortError는 무시하고 그 외 오류만 0원으로 초기화합니다.
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -436,32 +430,25 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
     try {
       // 옵션 변경 요청 중에는 해당 행을 로딩 상태로 설정합니다.
       setUpdatingItemKey(cartItemKey);
-      const response = await fetch(getShopCartOptionUpdatePath(), {
+      const result = await requestShopClientApi<{ message?: string }>(getShopCartOptionUpdatePath(), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
+        body: {
           goodsId: cartItem.goodsId,
           sizeId: cartItem.sizeId,
           targetSizeId: draft.targetSizeId,
           qty: draft.qty,
-        }),
+        },
       });
 
-      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-
       // 비로그인/세션만료면 로그인 이동을 안내합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         handleUnauthorizedResponse();
         return;
       }
 
       // 실패 응답이면 서버 메시지를 우선 노출합니다.
-      if (!response.ok) {
-        window.alert(payload?.message ?? "장바구니 옵션 변경에 실패했습니다.");
+      if (!result.ok) {
+        window.alert(result.message || "장바구니 옵션 변경에 실패했습니다.");
         return;
       }
 
@@ -502,32 +489,25 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
     try {
       // 선택 삭제 API를 호출하는 동안 상단 버튼을 로딩 상태로 설정합니다.
       setIsSelectedDeleteSubmitting(true);
-      const response = await fetch(getShopCartDeletePath(), {
+      const result = await requestShopClientApi<{ message?: string }>(getShopCartDeletePath(), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(buildDeletePayload(selectedCartList)),
+        body: buildDeletePayload(selectedCartList),
       });
 
-      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-
       // 비로그인/세션만료면 로그인 이동을 안내합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         handleUnauthorizedResponse();
         return;
       }
 
       // 실패 응답이면 서버 메시지를 우선 노출합니다.
-      if (!response.ok) {
-        window.alert(payload?.message ?? "장바구니 선택 삭제에 실패했습니다.");
+      if (!result.ok) {
+        window.alert(result.message || "장바구니 선택 삭제에 실패했습니다.");
         return;
       }
 
       // 성공 시 완료 메시지를 노출하고 화면을 새로고침합니다.
-      window.alert(payload?.message ?? "선택한 장바구니 상품을 삭제했습니다.");
+      window.alert(result.message || "선택한 장바구니 상품을 삭제했습니다.");
       router.refresh();
     } catch {
       // 네트워크/예외 오류 시 공통 실패 문구를 노출합니다.
@@ -553,32 +533,25 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
     try {
       // 단건 삭제 API를 호출하는 동안 행 삭제 상태를 설정합니다.
       setDeletingItemKey(cartItemKey);
-      const response = await fetch(getShopCartDeletePath(), {
+      const result = await requestShopClientApi<{ message?: string }>(getShopCartDeletePath(), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(buildDeletePayload([cartItem])),
+        body: buildDeletePayload([cartItem]),
       });
 
-      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-
       // 비로그인/세션만료면 로그인 이동을 안내합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         handleUnauthorizedResponse();
         return;
       }
 
       // 실패 응답이면 서버 메시지를 우선 노출합니다.
-      if (!response.ok) {
-        window.alert(payload?.message ?? "장바구니 삭제에 실패했습니다.");
+      if (!result.ok) {
+        window.alert(result.message || "장바구니 삭제에 실패했습니다.");
         return;
       }
 
       // 성공 시 완료 메시지를 노출하고 화면을 새로고침합니다.
-      window.alert(payload?.message ?? "선택한 장바구니 상품을 삭제했습니다.");
+      window.alert(result.message || "선택한 장바구니 상품을 삭제했습니다.");
       router.refresh();
     } catch {
       // 네트워크/예외 오류 시 공통 실패 문구를 노출합니다.
@@ -606,28 +579,24 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
     try {
       // 전체 삭제 API를 호출하는 동안 상단 버튼을 로딩 상태로 설정합니다.
       setIsAllDeleteSubmitting(true);
-      const response = await fetch(getShopCartDeleteAllPath(), {
+      const result = await requestShopClientApi<{ message?: string }>(getShopCartDeleteAllPath(), {
         method: "POST",
-        credentials: "include",
       });
 
-      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-
       // 비로그인/세션만료면 로그인 이동을 안내합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         handleUnauthorizedResponse();
         return;
       }
 
       // 실패 응답이면 서버 메시지를 우선 노출합니다.
-      if (!response.ok) {
-        window.alert(payload?.message ?? "장바구니 전체 삭제에 실패했습니다.");
+      if (!result.ok) {
+        window.alert(result.message || "장바구니 전체 삭제에 실패했습니다.");
         return;
       }
 
       // 성공 시 완료 메시지를 노출하고 화면을 새로고침합니다.
-      window.alert(payload?.message ?? "장바구니 상품을 전체 삭제했습니다.");
+      window.alert(result.message || "장바구니 상품을 전체 삭제했습니다.");
       router.refresh();
     } catch {
       // 네트워크/예외 오류 시 공통 실패 문구를 노출합니다.

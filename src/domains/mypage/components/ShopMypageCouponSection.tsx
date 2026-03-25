@@ -14,6 +14,7 @@ import type {
   ShopMypageOwnedCouponItem,
 } from "@/domains/mypage/types";
 import { buildLoginFormPath } from "@/domains/login/utils/loginRedirectUtils";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import styles from "./ShopMypageCouponSection.module.css";
 
 // 마이페이지 쿠폰 탭 구분 타입입니다.
@@ -408,27 +409,22 @@ export default function ShopMypageCouponSection({
 
     try {
       setDownloadingCouponNo(cpnNo);
-      const response = await fetch(getShopMypageCouponDownloadPath(), {
+      const result = await requestShopClientApi<ShopMypageCouponActionResponse>(getShopMypageCouponDownloadPath(), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(buildCouponDownloadRequestPayload(cpnNo)),
+        body: buildCouponDownloadRequestPayload(cpnNo),
       });
-      const payload = (await response.json().catch(() => null)) as ShopMypageCouponActionResponse | null;
 
-      if (response.status === 401) {
+      if (result.status === 401) {
         handleUnauthorizedResponse();
         return;
       }
 
-      if (!response.ok) {
-        window.alert(payload?.message ?? "쿠폰 다운로드에 실패했습니다.");
+      if (!result.ok) {
+        window.alert(result.message || "쿠폰 다운로드에 실패했습니다.");
         return;
       }
 
-      window.alert(payload?.message ?? "쿠폰을 다운로드했습니다.");
+      window.alert(result.message || "쿠폰을 다운로드했습니다.");
       router.refresh();
     } catch {
       window.alert("쿠폰 다운로드에 실패했습니다.");
@@ -445,23 +441,21 @@ export default function ShopMypageCouponSection({
 
     try {
       setIsDownloadAllSubmitting(true);
-      const response = await fetch(getShopMypageCouponDownloadAllPath(), {
+      const result = await requestShopClientApi<ShopMypageCouponActionResponse>(getShopMypageCouponDownloadAllPath(), {
         method: "POST",
-        credentials: "include",
       });
-      const payload = (await response.json().catch(() => null)) as ShopMypageCouponActionResponse | null;
 
-      if (response.status === 401) {
+      if (result.status === 401) {
         handleUnauthorizedResponse();
         return;
       }
 
-      if (!response.ok) {
-        window.alert(payload?.message ?? "전체 쿠폰 다운로드에 실패했습니다.");
+      if (!result.ok) {
+        window.alert(result.message || "전체 쿠폰 다운로드에 실패했습니다.");
         return;
       }
 
-      window.alert(payload?.message ?? "전체 쿠폰을 다운로드했습니다.");
+      window.alert(result.message || "전체 쿠폰을 다운로드했습니다.");
       router.refresh();
     } catch {
       window.alert("전체 쿠폰 다운로드에 실패했습니다.");

@@ -14,6 +14,7 @@ import {
 import type { ShopGoodsDetailResponse, ShopGoodsGroupItem, ShopGoodsImage, ShopGoodsSizeItem } from "@/domains/goods/types";
 import { buildLoginFormPath } from "@/domains/login/utils/loginRedirectUtils";
 import { buildShopOrderPath } from "@/domains/order/utils/orderPathUtils";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import ShopGoodsCouponDownloadLayer from "@/domains/goods/components/ShopGoodsCouponDownloadLayer";
 import ShopConfirmLayer from "@/shared/components/layer/ShopConfirmLayer";
 import styles from "./ShopGoodsDetailTop.module.css";
@@ -25,6 +26,11 @@ interface ShopGoodsDetailTopProps {
 }
 
 interface ShopGoodsCouponDownloadResponse {
+  message?: string;
+}
+
+interface ShopGoodsWishlistToggleResponse {
+  wished?: boolean;
   message?: string;
 }
 
@@ -496,36 +502,29 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId, reque
     try {
       // 위시 토글 API를 호출하는 동안 로딩 상태를 설정합니다.
       setWishlistLoadingGoodsId(targetGoodsId);
-      const response = await fetch("/api/shop/goods/wishlist/toggle", {
+      const result = await requestShopClientApi<ShopGoodsWishlistToggleResponse>("/api/shop/goods/wishlist/toggle", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
+        body: {
           goodsId: targetGoodsId,
-        }),
+        },
       });
 
-      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
-      const payload = (await response.json().catch(() => null)) as { wished?: boolean; message?: string } | null;
-
       // 비로그인/세션만료면 로그인 확인 레이어를 노출합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         setShowLoginConfirmLayer(true);
         return;
       }
 
       // 실패 응답이면 서버 메시지를 우선 노출합니다.
-      if (!response.ok) {
-        window.alert(payload?.message ?? "위시리스트 처리에 실패했습니다.");
+      if (!result.ok) {
+        window.alert(result.message || "위시리스트 처리에 실패했습니다.");
         return;
       }
 
       // 성공 응답의 wished 상태로 하트 아이콘을 즉시 갱신합니다.
       setWishlistOverride({
         goodsId: targetGoodsId,
-        wished: Boolean(payload?.wished),
+        wished: Boolean(result.data?.wished),
       });
     } catch {
       // 네트워크/예외 오류 시 공통 실패 문구를 노출합니다.
@@ -573,33 +572,26 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId, reque
 
     try {
       // 상품상세 상품쿠폰 다운로드 API를 호출합니다.
-      const response = await fetch(getShopGoodsCouponDownloadPath(), {
+      const result = await requestShopClientApi<ShopGoodsCouponDownloadResponse>(getShopGoodsCouponDownloadPath(), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(buildGoodsCouponDownloadRequestPayload(targetGoodsId, cpnNo)),
+        body: buildGoodsCouponDownloadRequestPayload(targetGoodsId, cpnNo),
       });
 
-      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
-      const payload = (await response.json().catch(() => null)) as ShopGoodsCouponDownloadResponse | null;
-
       // 비로그인/세션만료는 별도 상태로 반환합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         return {
           ok: false,
           unauthorized: true,
-          message: payload?.message ?? "로그인이 필요합니다.",
+          message: result.message || "로그인이 필요합니다.",
         };
       }
 
       // 실패 응답이면 서버 메시지를 함께 반환합니다.
-      if (!response.ok) {
+      if (!result.ok) {
         return {
           ok: false,
           unauthorized: false,
-          message: payload?.message ?? "쿠폰 다운로드에 실패했습니다.",
+          message: result.message || "쿠폰 다운로드에 실패했습니다.",
         };
       }
 
@@ -607,7 +599,7 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId, reque
       return {
         ok: true,
         unauthorized: false,
-        message: payload?.message ?? "쿠폰을 다운로드했습니다.",
+        message: result.message || "쿠폰을 다운로드했습니다.",
       };
     } catch {
       // 네트워크/예외 오류 시 공통 실패 문구를 반환합니다.
@@ -744,32 +736,25 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId, reque
     try {
       // 장바구니 등록 API를 호출하는 동안 로딩 상태를 설정합니다.
       setIsCartSubmitting(true);
-      const response = await fetch(getShopGoodsCartAddPath(), {
+      const result = await requestShopClientApi<{ message?: string }>(getShopGoodsCartAddPath(), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(buildShopGoodsCartMutationPayload(targetGoodsId, targetSizeId, orderQuantity, requestedExhibitionNo)),
+        body: buildShopGoodsCartMutationPayload(targetGoodsId, targetSizeId, orderQuantity, requestedExhibitionNo),
       });
 
-      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-
       // 비로그인/세션만료면 로그인 확인 레이어를 노출합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         setShowLoginConfirmLayer(true);
         return;
       }
 
       // 실패 응답이면 서버 메시지를 우선 노출합니다.
-      if (!response.ok) {
-        window.alert(payload?.message ?? "장바구니 처리에 실패했습니다.");
+      if (!result.ok) {
+        window.alert(result.message || "장바구니 처리에 실패했습니다.");
         return;
       }
 
       // 성공 시 완료 메시지를 노출합니다.
-      window.alert(payload?.message ?? "장바구니에 담았습니다.");
+      window.alert(result.message || "장바구니에 담았습니다.");
     } catch {
       // 네트워크/예외 오류 시 공통 실패 문구를 노출합니다.
       window.alert("장바구니 처리에 실패했습니다.");
@@ -803,32 +788,26 @@ export default function ShopGoodsDetailTop({ detailData, requestedGoodsId, reque
     try {
       // 바로구매 장바구니 등록 API를 호출하는 동안 로딩 상태를 설정합니다.
       setIsOrderNowSubmitting(true);
-      const response = await fetch(getShopGoodsOrderNowPath(), {
+      const result = await requestShopClientApi<ShopGoodsOrderNowResponse>(getShopGoodsOrderNowPath(), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(buildShopGoodsCartMutationPayload(targetGoodsId, targetSizeId, orderQuantity, requestedExhibitionNo)),
+        body: buildShopGoodsCartMutationPayload(targetGoodsId, targetSizeId, orderQuantity, requestedExhibitionNo),
       });
 
-      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
-      const payload = (await response.json().catch(() => null)) as ShopGoodsOrderNowResponse | null;
-
       // 비로그인/세션만료면 로그인 확인 레이어를 노출합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         setShowLoginConfirmLayer(true);
         return;
       }
 
       // 실패 응답이면 서버 메시지를 우선 노출합니다.
-      if (!response.ok) {
-        window.alert(payload?.message ?? "바로구매 처리에 실패했습니다.");
+      if (!result.ok) {
+        window.alert(result.message || "바로구매 처리에 실패했습니다.");
         return;
       }
 
       // 생성된 cartId로 주문서 화면으로 이동합니다.
-      const createdCartId = typeof payload?.cartId === "number" && Number.isFinite(payload.cartId) ? payload.cartId : 0;
+      const createdCartId =
+        typeof result.data?.cartId === "number" && Number.isFinite(result.data.cartId) ? result.data.cartId : 0;
       if (createdCartId < 1) {
         window.alert("주문 정보를 확인해주세요.");
         return;

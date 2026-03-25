@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getShopOrderPaymentFailPath } from "@/domains/order/api/orderApi";
 import { buildShopOrderRetryPath } from "@/domains/order/utils/orderPathUtils";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import styles from "../payment-result.module.css";
 
 // 결제 실패 페이지를 원래 주문서로 되돌립니다.
@@ -33,18 +34,14 @@ export default function ShopOrderFailPage() {
     const redirectToOrder = async (): Promise<void> => {
       if (requestInfo.payNo > 0 && requestInfo.ordNo.trim() !== "") {
         try {
-          await fetch(getShopOrderPaymentFailPath(), {
+          await requestShopClientApi(getShopOrderPaymentFailPath(), {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            credentials: "include",
-            body: JSON.stringify({
+            body: {
               payNo: requestInfo.payNo,
               ordNo: requestInfo.ordNo,
               code: requestInfo.code,
               message: requestInfo.message,
-            }),
+            },
           });
         } catch {
           // 실패 이력 저장에 실패해도 주문서 복귀는 계속 진행합니다.

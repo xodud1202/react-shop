@@ -21,6 +21,7 @@ import {
   type ShopMypageOrderCancelPreviewSummary,
   type ShopMypageOrderCancelSelectionMap,
 } from "@/domains/mypage/utils/shopMypageOrderCancel";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import type { ShopMypageOrderAmountTableColumn } from "./ShopMypageOrderAmountTable";
 import ShopMypageOrderAmountTable from "./ShopMypageOrderAmountTable";
 import ShopMypageOrderCancelItemList from "./ShopMypageOrderCancelItemList";
@@ -48,19 +49,6 @@ function buildShopMypageOrderCancelSubmitItemList(
       },
     ];
   });
-}
-
-// 주문취소 API 응답에서 사용자 표시용 메시지를 안전하게 추출합니다.
-async function readShopMypageOrderCancelResponseMessage(response: Response): Promise<string> {
-  try {
-    const responseBody = (await response.json()) as { message?: string } | null;
-    if (typeof responseBody?.message === "string" && responseBody.message.trim() !== "") {
-      return responseBody.message;
-    }
-  } catch {
-    return "";
-  }
-  return "";
 }
 
 // 일반 금액 문자열을 `-#,###원` 또는 `#,###원` 형식으로 변환합니다.
@@ -368,22 +356,17 @@ export default function ShopMypageOrderCancelSection({
     // 현재 화면 계산값을 포함해 주문취소 API를 호출하고, 실패 메시지는 alert로 노출합니다.
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/shop/mypage/order/cancel", {
+      const result = await requestShopClientApi<ShopMypageOrderCancelSubmitResponse>("/api/shop/mypage/order/cancel", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
+        body: requestBody,
       });
-      if (!response.ok) {
-        const responseMessage = await readShopMypageOrderCancelResponseMessage(response);
-        window.alert(responseMessage || (response.status === 409 ? "환불 금액이 상이합니다." : "주문취소 처리에 실패했습니다."));
+      if (!result.ok || !result.data) {
+        window.alert(result.message || (result.status === 409 ? "환불 금액이 상이합니다." : "주문취소 처리에 실패했습니다."));
         return;
       }
 
-      const result = (await response.json()) as ShopMypageOrderCancelSubmitResponse;
       window.alert("주문취소가 완료되었습니다.");
-      router.replace(`/mypage/order/${result.ordNo}`);
+      router.replace(`/mypage/order/${result.data.ordNo}`);
       router.refresh();
     } catch {
       window.alert("주문취소 처리에 실패했습니다.");

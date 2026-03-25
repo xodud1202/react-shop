@@ -17,6 +17,7 @@ import type {
   ShopOrderAddressSearchItem,
 } from "@/domains/order/types";
 import { formatPhoneNumberValue, isValidPhoneNumberValue } from "@/domains/login/utils/joinFormUtils";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import styles from "./ShopOrderAddressLayer.module.css";
 
 interface ShopOrderAddressRegisterLayerProps {
@@ -180,28 +181,25 @@ export default function ShopOrderAddressRegisterLayer({
       setSearchErrorMessage("");
       setSelectedSearchItem(null);
       setSubmitErrorMessage("");
-      const response = await fetch(getShopOrderAddressSearchPath(normalizedKeyword, targetPage, SEARCH_COUNT_PER_PAGE), {
+      const result = await requestShopClientApi(getShopOrderAddressSearchPath(normalizedKeyword, targetPage, SEARCH_COUNT_PER_PAGE), {
         method: "GET",
-        credentials: "include",
       });
-      const payload = await response.json().catch(() => null);
 
       // 세션이 만료된 경우 공통 로그인 메시지를 노출합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         window.alert("로그인이 필요합니다.");
         return;
       }
 
       // 실패 응답이면 서버 메시지를 우선 노출합니다.
-      if (!response.ok) {
-        const message = payload && typeof payload === "object" && "message" in payload ? String(payload.message ?? "") : "";
-        setSearchErrorMessage(message || "배송지 검색에 실패했습니다.");
+      if (!result.ok || !result.data) {
+        setSearchErrorMessage(result.message || "배송지 검색에 실패했습니다.");
         setSearchResponse(createDefaultShopOrderAddressSearchResponse());
         return;
       }
 
       // 정상 응답을 정규화해 검색 결과와 API 메시지를 반영합니다.
-      const normalizedResponse = normalizeShopOrderAddressSearchResponse(payload);
+      const normalizedResponse = normalizeShopOrderAddressSearchResponse(result.data);
       setSearchResponse(normalizedResponse);
       setCurrentPage(normalizedResponse.common.currentPage > 0 ? normalizedResponse.common.currentPage : targetPage);
       if (normalizedResponse.common.errorCode !== "" && normalizedResponse.common.errorCode !== "0") {
@@ -271,31 +269,25 @@ export default function ShopOrderAddressRegisterLayer({
         rsvNm: rsvNm.trim(),
         defaultYn: saveAsDefault ? "Y" : "N",
       };
-      const response = await fetch(requestUrl, {
+      const result = await requestShopClientApi(requestUrl, {
         method: requestMethod,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(requestBody),
+        body: requestBody,
       });
-      const payload = await response.json().catch(() => null);
 
       // 세션 만료 시 공통 메시지를 노출합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         window.alert("로그인이 필요합니다.");
         return;
       }
 
       // 실패 응답이면 서버 메시지를 등록 에러로 노출합니다.
-      if (!response.ok) {
-        const message = payload && typeof payload === "object" && "message" in payload ? String(payload.message ?? "") : "";
-        setSubmitErrorMessage(message || (isEditMode ? "배송지 수정에 실패했습니다." : "배송지 등록에 실패했습니다."));
+      if (!result.ok || !result.data) {
+        setSubmitErrorMessage(result.message || (isEditMode ? "배송지 수정에 실패했습니다." : "배송지 등록에 실패했습니다."));
         return;
       }
 
       // 정상 응답을 정규화해 부모 화면 상태를 갱신합니다.
-      const normalizedResponse = normalizeShopOrderAddressSaveResponse(payload);
+      const normalizedResponse = normalizeShopOrderAddressSaveResponse(result.data);
       const safeResponse =
         normalizedResponse.savedAddress || normalizedResponse.defaultAddress || normalizedResponse.addressList.length > 0
           ? normalizedResponse

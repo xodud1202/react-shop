@@ -23,6 +23,7 @@ import type {
   ShopOrderPaymentMethodCd,
 } from "@/domains/order/types";
 import { requestTossPayment } from "@/domains/order/utils/tossPayments";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import styles from "./ShopOrderSection.module.css";
 
 interface ShopOrderSummaryAmount {
@@ -217,13 +218,9 @@ export default function ShopOrderSection({ orderPageData, entryInfo, paymentFail
 
     try {
       setIsPreparingPayment(true);
-      const response = await fetch(getShopOrderPaymentPreparePath(), {
+      const result = await requestShopClientApi(getShopOrderPaymentPreparePath(), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
+        body: {
           from: entryInfo.from,
           goodsId: entryInfo.goodsId,
           cartIdList: entryInfo.cartIdList,
@@ -231,25 +228,23 @@ export default function ShopOrderSection({ orderPageData, entryInfo, paymentFail
           discountSelection,
           pointUseAmt,
           paymentMethodCd: selectedPaymentMethodCd,
-        }),
+        },
       });
-      const payload = await response.json().catch(() => null);
 
       // 로그인 세션이 만료되면 안내 문구를 우선 노출합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         window.alert("로그인이 필요합니다.");
         return;
       }
 
       // 서버 검증 실패 시 서버 메시지를 우선 노출합니다.
-      if (!response.ok) {
-        const message = payload && typeof payload === "object" && "message" in payload ? String(payload.message ?? "") : "";
-        window.alert(message || "주문 결제 준비에 실패했습니다.");
+      if (!result.ok || !result.data) {
+        window.alert(result.message || "주문 결제 준비에 실패했습니다.");
         return;
       }
 
       // 결제 준비 결과를 정규화한 뒤 Toss 결제창을 실행합니다.
-      const paymentPrepareResponse = normalizeShopOrderPaymentPrepareResponse(payload);
+      const paymentPrepareResponse = normalizeShopOrderPaymentPrepareResponse(result.data);
       if (paymentPrepareResponse.payNo < 1 || paymentPrepareResponse.orderId.trim() === "") {
         window.alert("주문 결제 준비에 실패했습니다.");
         return;
@@ -355,36 +350,30 @@ export default function ShopOrderSection({ orderPageData, entryInfo, paymentFail
   const handleApplyCouponSelection = async (nextSelection: ShopOrderDiscountSelection): Promise<void> => {
     try {
       setIsQuotingDiscount(true);
-      const response = await fetch(getShopOrderDiscountQuotePath(), {
+      const result = await requestShopClientApi(getShopOrderDiscountQuotePath(), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
+        body: {
           cartIdList: orderPageData.cartList.map((cartItem) => cartItem.cartId),
           goodsCouponSelectionList: nextSelection.goodsCouponSelectionList,
           cartCouponCustCpnNo: nextSelection.cartCouponCustCpnNo,
           deliveryCouponCustCpnNo: nextSelection.deliveryCouponCustCpnNo,
-        }),
+        },
       });
-      const payload = await response.json().catch(() => null);
 
       // 세션 만료 시 공통 로그인 메시지를 노출합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         window.alert("로그인이 필요합니다.");
         return;
       }
 
       // 실패 응답이면 서버 메시지를 우선 노출합니다.
-      if (!response.ok) {
-        const message = payload && typeof payload === "object" && "message" in payload ? String(payload.message ?? "") : "";
-        window.alert(message || "할인 혜택 계산에 실패했습니다.");
+      if (!result.ok || !result.data) {
+        window.alert(result.message || "할인 혜택 계산에 실패했습니다.");
         return;
       }
 
       // 정상 응답을 정규화해 할인 상태와 포인트 최대값을 갱신합니다.
-      const normalizedResponse = normalizeShopOrderDiscountQuoteResponse(payload);
+      const normalizedResponse = normalizeShopOrderDiscountQuoteResponse(result.data);
       const nextPointUseAmt = clampPointUseAmt(pointUseAmt, normalizedResponse.discountAmount.maxPointUseAmt);
       setDiscountSelection(normalizedResponse.discountSelection);
       setDiscountAmount(normalizedResponse.discountAmount);

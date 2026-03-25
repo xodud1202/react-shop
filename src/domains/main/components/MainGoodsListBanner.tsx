@@ -1,6 +1,3 @@
-"use client";
-
-import { useMemo } from "react";
 import type { ShopMainSection } from "@/domains/main/types";
 import MainProductCard from "./MainProductCard";
 import styles from "./ShopMain.module.css";
@@ -12,13 +9,9 @@ interface MainGoodsListBannerProps {
 // 메인 상품리스트 배너 섹션을 렌더링합니다.
 export default function MainGoodsListBanner({ section }: MainGoodsListBannerProps) {
   // 상품 목록을 정렬해 렌더링 순서를 고정합니다.
-  const goodsList = useMemo(
-    () =>
-      Array.isArray(section.goodsItems)
-        ? [...section.goodsItems].sort((left, right) => (left.dispOrd ?? 0) - (right.dispOrd ?? 0))
-        : [],
-    [section.goodsItems],
-  );
+  const goodsList = Array.isArray(section.goodsItems)
+    ? [...section.goodsItems].sort((left, right) => (left.dispOrd ?? 0) - (right.dispOrd ?? 0))
+    : [];
 
   // 상품 데이터가 없으면 섹션을 렌더링하지 않습니다.
   if (goodsList.length === 0) {
@@ -36,4 +29,3 @@ export default function MainGoodsListBanner({ section }: MainGoodsListBannerProp
     </section>
   );
 }
-

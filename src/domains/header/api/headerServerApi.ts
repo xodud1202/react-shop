@@ -1,5 +1,6 @@
+import { cache } from "react";
 import type { ShopHeaderBrand, ShopHeaderCategoryTree } from "@/domains/header/types";
-import { readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
+import { createShopPublicCacheOptions, readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
 
 interface ShopHeaderServerData {
   categories: ShopHeaderCategoryTree[];
@@ -7,10 +8,16 @@ interface ShopHeaderServerData {
 }
 
 // 헤더에 필요한 카테고리/브랜드 데이터를 SSR에서 조회합니다.
-export async function fetchShopHeaderServerData(): Promise<ShopHeaderServerData> {
+async function fetchShopHeaderServerDataInternal(): Promise<ShopHeaderServerData> {
   const [categoryResponse, brandResponse] = await Promise.all([
-    readShopServerApiResponse<ShopHeaderCategoryTree[]>("/api/shop/header/categories"),
-    readShopServerApiResponse<ShopHeaderBrand[]>("/api/shop/header/brands"),
+    readShopServerApiResponse<ShopHeaderCategoryTree[]>(
+      "/api/shop/header/categories",
+      createShopPublicCacheOptions(["shop:header", "shop:header:categories"]),
+    ),
+    readShopServerApiResponse<ShopHeaderBrand[]>(
+      "/api/shop/header/brands",
+      createShopPublicCacheOptions(["shop:header", "shop:header:brands"]),
+    ),
   ]);
 
   return {
@@ -18,3 +25,6 @@ export async function fetchShopHeaderServerData(): Promise<ShopHeaderServerData>
     brands: Array.isArray(brandResponse) ? brandResponse : [],
   };
 }
+
+// 헤더 공통 데이터 조회를 요청 단위로 메모이징합니다.
+export const fetchShopHeaderServerData = cache(fetchShopHeaderServerDataInternal);

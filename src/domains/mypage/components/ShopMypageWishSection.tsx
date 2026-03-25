@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ShopMypageWishPageResponse } from "@/domains/mypage/types";
 import { buildLoginFormPath } from "@/domains/login/utils/loginRedirectUtils";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import styles from "./ShopMypageWishSection.module.css";
 
 interface ShopMypageWishSectionProps {
@@ -117,22 +118,15 @@ export default function ShopMypageWishSection({ wishPageData }: ShopMypageWishSe
     try {
       // 삭제 API를 호출하는 동안 로딩 상태를 설정합니다.
       setDeletingGoodsId(normalizedGoodsId);
-      const response = await fetch("/api/shop/mypage/wish/delete", {
+      const result = await requestShopClientApi<{ message?: string }>("/api/shop/mypage/wish/delete", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
+        body: {
           goodsId: normalizedGoodsId,
-        }),
+        },
       });
 
-      // 응답 본문(JSON)이 없거나 파싱 실패해도 안전하게 처리합니다.
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-
       // 비로그인/세션만료면 로그인 확인 후 로그인 페이지로 이동합니다.
-      if (response.status === 401) {
+      if (result.status === 401) {
         const shouldMoveLogin = window.confirm("로그인이 필요한 기능입니다. 로그인하시겠습니까?");
         if (shouldMoveLogin) {
           router.push(buildLoginFormPath(resolveCurrentPagePath()));
@@ -141,8 +135,8 @@ export default function ShopMypageWishSection({ wishPageData }: ShopMypageWishSe
       }
 
       // 실패 응답이면 서버 메시지를 우선 노출합니다.
-      if (!response.ok) {
-        window.alert(payload?.message ?? "위시리스트 삭제에 실패했습니다.");
+      if (!result.ok) {
+        window.alert(result.message || "위시리스트 삭제에 실패했습니다.");
         return;
       }
 
