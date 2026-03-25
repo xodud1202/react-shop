@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
@@ -18,7 +18,6 @@ import {
   isShopMypageOrderPartialCancelable,
   resolveShopMypageOrderCancelSelectionItem,
   resolveShopMypageOrderCancelTarget,
-  type ShopMypageOrderCancelMode,
   type ShopMypageOrderCancelPreviewSummary,
   type ShopMypageOrderCancelSelectionMap,
 } from "@/domains/mypage/utils/shopMypageOrderCancel";
@@ -236,7 +235,7 @@ export default function ShopMypageOrderCancelSection({
   const router = useRouter();
   const { order, amountSummary, reasonList, siteInfo } = orderCancelPageData;
   const cancelTarget = resolveShopMypageOrderCancelTarget(order, initialOrdDtlNo);
-  const [cancelMode] = useState<ShopMypageOrderCancelMode>(cancelTarget.cancelMode);
+  const cancelMode = cancelTarget.cancelMode;
   const [selectionMap, setSelectionMap] = useState<ShopMypageOrderCancelSelectionMap>(() =>
     createInitialShopMypageOrderCancelSelectionMap(order, cancelTarget.cancelMode, cancelTarget.initialOrdDtlNo),
   );
@@ -244,23 +243,38 @@ export default function ShopMypageOrderCancelSection({
   const [reasonDetail, setReasonDetail] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  // useMemo 훅은 조건부 반환 전에 선언합니다 (React Rules of Hooks 준수).
+  const cancelPreviewResult = useMemo(
+    () => buildShopMypageOrderCancelPreviewResult(order, amountSummary, siteInfo, selectionMap),
+    [order, amountSummary, siteInfo, selectionMap],
+  );
+  const remainingAmountColumnList = useMemo(() => createRemainingAmountColumnList(amountSummary), [amountSummary]);
+  const cancelPreviewAmountColumnList = useMemo(
+    () => createCancelPreviewAmountColumnList(cancelPreviewResult.cancelPreviewSummary),
+    [cancelPreviewResult.cancelPreviewSummary],
+  );
+  // order?.detailList를 사용해 null 안전성을 유지합니다.
+  const partialCancelableDetailList = useMemo(
+    () => (order?.detailList ?? []).filter((detailItem) => isShopMypageOrderPartialCancelable(detailItem)),
+    [order?.detailList],
+  );
+  const allSelected = useMemo(
+    () =>
+      partialCancelableDetailList.length > 0 &&
+      partialCancelableDetailList.every(
+        (detailItem) => resolveShopMypageOrderCancelSelectionItem(selectionMap, detailItem).selected,
+      ),
+    [partialCancelableDetailList, selectionMap],
+  );
+  const selectedReason = useMemo(
+    () => reasonList.find((reasonItem) => reasonItem.cd === selectedReasonCd) ?? null,
+    [reasonList, selectedReasonCd],
+  );
+
   // 주문 정보가 없으면 빈 화면을 반환합니다.
   if (!order) {
     return null;
   }
-
-  // 취소 예정 금액은 현재 선택 상태 기준으로만 계산합니다.
-  const cancelPreviewResult = buildShopMypageOrderCancelPreviewResult(order, amountSummary, siteInfo, selectionMap);
-  const remainingAmountColumnList = createRemainingAmountColumnList(amountSummary);
-  const cancelPreviewAmountColumnList = createCancelPreviewAmountColumnList(cancelPreviewResult.cancelPreviewSummary);
-  const partialCancelableDetailList = order.detailList.filter((detailItem) => isShopMypageOrderPartialCancelable(detailItem));
-  const allSelected =
-    partialCancelableDetailList.length > 0 &&
-    partialCancelableDetailList.every(
-      (detailItem) => resolveShopMypageOrderCancelSelectionItem(selectionMap, detailItem).selected,
-    );
-
-  const selectedReason = reasonList.find((reasonItem) => reasonItem.cd === selectedReasonCd) ?? null;
   const reasonValidationMessage =
     selectedReasonCd.trim() === ""
       ? "주문 취소 사유를 선택해주세요."

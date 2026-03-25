@@ -144,6 +144,51 @@ export interface ShopMypageOrderCancelSubmitResponse {
   restoredPointAmt: number;
 }
 
+// 마이페이지 취소내역 상품 상세 아이템 타입입니다.
+export interface ShopMypageCancelHistoryDetailItem {
+  clmNo: string;
+  ordDtlNo: number;
+  goodsId: string;
+  goodsNm: string;
+  sizeId: string;
+  qty: number;
+  saleAmt: number;
+  addAmt: number;
+  chgReasonCd: string;
+  chgReasonNm: string;
+  chgReasonDtl: string;
+  imgPath: string;
+  imgUrl: string;
+}
+
+// 마이페이지 취소내역 클레임 단위 아이템 타입입니다.
+export interface ShopMypageCancelHistoryItem {
+  clmNo: string;
+  ordNo: string;
+  chgDt: string;
+  chgStatCd: string;
+  chgStatNm: string;
+  payDelvAmt: number;
+  refundedCashAmt: number;
+  detailList: ShopMypageCancelHistoryDetailItem[];
+}
+
+// 마이페이지 취소내역 페이지 응답 타입입니다.
+export interface ShopMypageCancelHistoryPageResponse {
+  cancelList: ShopMypageCancelHistoryItem[];
+  cancelCount: number;
+  pageNo: number;
+  pageSize: number;
+  totalPageCount: number;
+  startDate: string;
+  endDate: string;
+}
+
+// 마이페이지 취소상세 페이지 응답 타입입니다.
+export interface ShopMypageCancelDetailPageResponse {
+  cancelItem: ShopMypageCancelHistoryItem | null;
+}
+
 // 마이페이지 쿠폰함 보유 쿠폰 아이템 타입입니다.
 export interface ShopMypageOwnedCouponItem {
   custCpnNo: number;

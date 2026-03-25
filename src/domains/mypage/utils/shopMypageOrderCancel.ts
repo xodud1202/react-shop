@@ -344,8 +344,9 @@ export function buildShopMypageOrderCancelPreviewResult(
     activeOrderAmt += (normalizeNonNegativeInteger(detailItem.saleAmt) + normalizeNonNegativeInteger(detailItem.addAmt)) * currentRemainingQty;
     const canceledBeforeQty = Math.max(originalQty - currentRemainingQty, 0);
 
+    // resolveShopMypageOrderCancelSelectionItem 내부에서 이미 clamp 처리된 값을 사용합니다.
     const selectionItem = resolveShopMypageOrderCancelSelectionItem(selectionMap, detailItem);
-    const cancelQty = selectionItem.selected ? clampShopMypageOrderCancelQty(detailItem, selectionItem.cancelQty) : 0;
+    const cancelQty = selectionItem.selected ? selectionItem.cancelQty : 0;
     const remainingQty = Math.max(currentRemainingQty - cancelQty, 0);
 
     if (cancelQty > 0) {

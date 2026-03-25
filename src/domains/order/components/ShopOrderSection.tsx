@@ -90,8 +90,14 @@ function resolveOrderSummaryAmount(
   discountAmount: ShopOrderDiscountAmount,
   pointUseAmt: number,
 ): ShopOrderSummaryAmount {
-  const totalSupplyAmt = cartList.reduce((sum, cartItem) => sum + resolveCartRowSupplyAmt(cartItem), 0);
-  const totalSaleAmt = cartList.reduce((sum, cartItem) => sum + resolveCartRowSaleAmt(cartItem), 0);
+  // 공급가 합계와 판매가 합계를 단일 순회로 계산합니다.
+  const { totalSupplyAmt, totalSaleAmt } = cartList.reduce(
+    (acc, cartItem) => ({
+      totalSupplyAmt: acc.totalSupplyAmt + resolveCartRowSupplyAmt(cartItem),
+      totalSaleAmt: acc.totalSaleAmt + resolveCartRowSaleAmt(cartItem),
+    }),
+    { totalSupplyAmt: 0, totalSaleAmt: 0 },
+  );
   const goodsDiscountAmt = Math.max(totalSupplyAmt - totalSaleAmt, 0);
   const couponDiscountAmt = normalizeNonNegativeNumber(discountAmount.couponDiscountAmt);
   const normalizedPointUseAmt = normalizeNonNegativeNumber(pointUseAmt);
@@ -184,15 +190,15 @@ export default function ShopOrderSection({ orderPageData, entryInfo, paymentFail
   }, [paymentFailureInfo.code, paymentFailureInfo.message, paymentFailureInfo.payResult]);
 
   useEffect(() => {
-    // 쿠폰 할인 금액이 바뀌면 현재 포인트 입력값도 최대 사용 가능 금액 기준으로 즉시 동기화합니다.
-    const nextPointUseAmt = clampPointUseAmt(pointUseAmt, discountAmount.maxPointUseAmt);
-    const nextPointInputValue = nextPointUseAmt > 0 ? String(nextPointUseAmt) : "";
-    if (nextPointUseAmt === pointUseAmt && nextPointInputValue === pointInputValue) {
-      return;
-    }
-    setPointUseAmt(nextPointUseAmt);
-    setPointInputValue(nextPointInputValue);
-  }, [discountAmount.maxPointUseAmt, pointInputValue, pointUseAmt]);
+    // 쿠폰 할인으로 maxPointUseAmt가 변경될 때만 현재 포인트 사용값을 동기화합니다.
+    setPointUseAmt((prev) => {
+      const next = clampPointUseAmt(prev, discountAmount.maxPointUseAmt);
+      if (next !== prev) {
+        setPointInputValue(next > 0 ? String(next) : "");
+      }
+      return next;
+    });
+  }, [discountAmount.maxPointUseAmt]);
 
   // 주문하기 버튼 클릭 시 결제 준비 후 Toss 결제창을 실행합니다.
   const handleOrderButtonClick = async (): Promise<void> => {

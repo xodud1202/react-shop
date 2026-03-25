@@ -1,4 +1,8 @@
 import type {
+  ShopMypageCancelDetailPageResponse,
+  ShopMypageCancelHistoryDetailItem,
+  ShopMypageCancelHistoryItem,
+  ShopMypageCancelHistoryPageResponse,
   ShopMypageCouponPageResponse,
   ShopMypageCouponUnavailableGoodsItem,
   ShopMypageDownloadableCouponItem,
@@ -275,6 +279,11 @@ function normalizeDownloadableCouponItem(rawItem: unknown): ShopMypageDownloadab
   };
 }
 
+// 쿠키 헤더 문자열로 SSR 요청 옵션을 생성합니다.
+function buildRequestInitFromCookie(cookieHeader: string): RequestInit | undefined {
+  return cookieHeader.trim() === "" ? undefined : { headers: { cookie: cookieHeader } };
+}
+
 // 요청 페이지 번호를 1 이상의 값으로 보정합니다.
 function resolvePageNo(pageNo: number): number {
   if (!Number.isFinite(pageNo) || pageNo < 1) {
@@ -334,6 +343,22 @@ export function getShopMypageCouponDownloadAllPath(): string {
   return "/api/shop/mypage/coupon/download/all";
 }
 
+// 마이페이지 취소상세 API 경로를 생성합니다.
+function buildShopMypageCancelDetailPath(clmNo: string): string {
+  const queryParams = new URLSearchParams();
+  queryParams.set("clmNo", clmNo);
+  return `/api/shop/mypage/order/cancel/detail?${queryParams.toString()}`;
+}
+
+// 마이페이지 취소내역 API 경로를 생성합니다.
+function buildShopMypageCancelHistoryPagePath(pageNo: number, startDate: string, endDate: string): string {
+  const queryParams = new URLSearchParams();
+  queryParams.set("pageNo", String(resolvePageNo(pageNo)));
+  queryParams.set("startDate", normalizeString(startDate));
+  queryParams.set("endDate", normalizeString(endDate));
+  return `/api/shop/mypage/order/cancel/history?${queryParams.toString()}`;
+}
+
 // 마이페이지 위시리스트 페이지 SSR 데이터를 조회합니다.
 export async function fetchShopMypageWishPageServerData(
   pageNo: number,
@@ -341,7 +366,7 @@ export async function fetchShopMypageWishPageServerData(
 ): Promise<ShopMypageWishPageResponse> {
   // 위시리스트 API 경로를 생성해 응답을 조회합니다.
   const path = buildShopMypageWishPagePath(pageNo);
-  const requestInit = cookieHeader.trim() === "" ? undefined : { headers: { cookie: cookieHeader } };
+  const requestInit = buildRequestInitFromCookie(cookieHeader);
   const response = await readShopServerApiResponse<ShopMypageWishPageResponse>(path, requestInit);
   const defaultResponse = createDefaultShopMypageWishPageResponse();
 
@@ -371,7 +396,7 @@ export async function fetchShopMypageCouponPageServerData(
 ): Promise<ShopMypageCouponPageResponse> {
   // 쿠폰함 API 경로를 생성해 응답을 조회합니다.
   const path = buildShopMypageCouponPagePath(ownedPageNo, downloadablePageNo);
-  const requestInit = cookieHeader.trim() === "" ? undefined : { headers: { cookie: cookieHeader } };
+  const requestInit = buildRequestInitFromCookie(cookieHeader);
   const response = await readShopServerApiResponse<ShopMypageCouponPageResponse>(path, requestInit);
   const defaultResponse = createDefaultShopMypageCouponPageResponse();
 
@@ -427,7 +452,7 @@ export async function fetchShopMypageOrderPageServerData(
 ): Promise<ShopMypageOrderPageResponse> {
   // 주문내역 API 경로를 생성해 응답을 조회합니다.
   const path = buildShopMypageOrderPagePath(pageNo, startDate, endDate);
-  const requestInit = cookieHeader.trim() === "" ? undefined : { headers: { cookie: cookieHeader } };
+  const requestInit = buildRequestInitFromCookie(cookieHeader);
   const response = await readShopServerApiResponse<ShopMypageOrderPageResponse>(path, requestInit);
   const defaultResponse = createDefaultShopMypageOrderPageResponse();
 
@@ -467,7 +492,7 @@ export async function fetchShopMypageOrderDetailPageServerData(
 ): Promise<ShopMypageOrderDetailPageResponse | null> {
   // 주문상세 API 경로를 생성해 응답을 조회합니다.
   const path = buildShopMypageOrderDetailPagePath(ordNo);
-  const requestInit = cookieHeader.trim() === "" ? undefined : { headers: { cookie: cookieHeader } };
+  const requestInit = buildRequestInitFromCookie(cookieHeader);
   const response = await readShopServerApiResponse<ShopMypageOrderDetailPageResponse>(path, requestInit);
   const defaultAmountSummary = createDefaultShopMypageOrderAmountSummary();
 
@@ -497,7 +522,7 @@ export async function fetchShopMypageOrderCancelPageServerData(
 ): Promise<ShopMypageOrderCancelPageResponse | null> {
   // 주문취소 신청 화면 API 경로를 생성해 응답을 조회합니다.
   const path = buildShopMypageOrderCancelPagePath(ordNo, ordDtlNo);
-  const requestInit = cookieHeader.trim() === "" ? undefined : { headers: { cookie: cookieHeader } };
+  const requestInit = buildRequestInitFromCookie(cookieHeader);
   const response = await readShopServerApiResponse<ShopMypageOrderCancelPageResponse>(path, requestInit);
   const defaultAmountSummary = createDefaultShopMypageOrderAmountSummary();
   const defaultSiteInfo = createDefaultShopMypageOrderCancelSiteInfo();
@@ -522,4 +547,113 @@ export async function fetchShopMypageOrderCancelPageServerData(
       : [],
     siteInfo: response.siteInfo ? normalizeShopMypageOrderCancelSiteInfo(response.siteInfo) : defaultSiteInfo,
   };
+}
+
+// 마이페이지 취소내역 기본 응답값을 생성합니다.
+function createDefaultShopMypageCancelHistoryPageResponse(): ShopMypageCancelHistoryPageResponse {
+  return {
+    cancelList: [],
+    cancelCount: 0,
+    pageNo: 1,
+    pageSize: 5,
+    totalPageCount: 0,
+    startDate: "",
+    endDate: "",
+  };
+}
+
+// 마이페이지 취소내역 상품 상세 아이템을 기본값과 함께 정규화합니다.
+function normalizeShopMypageCancelHistoryDetailItem(rawItem: unknown): ShopMypageCancelHistoryDetailItem {
+  const source = (rawItem ?? {}) as Partial<ShopMypageCancelHistoryDetailItem>;
+  return {
+    clmNo: normalizeString(source.clmNo),
+    ordDtlNo: normalizeNonNegativeNumber(source.ordDtlNo),
+    goodsId: normalizeString(source.goodsId),
+    goodsNm: normalizeString(source.goodsNm),
+    sizeId: normalizeString(source.sizeId),
+    qty: normalizeNonNegativeNumber(source.qty),
+    saleAmt: normalizeNonNegativeNumber(source.saleAmt),
+    addAmt: normalizeNonNegativeNumber(source.addAmt),
+    chgReasonCd: normalizeString(source.chgReasonCd),
+    chgReasonNm: normalizeString(source.chgReasonNm),
+    chgReasonDtl: normalizeString(source.chgReasonDtl),
+    imgPath: normalizeString(source.imgPath),
+    imgUrl: normalizeString(source.imgUrl),
+  };
+}
+
+// 마이페이지 취소내역 클레임 아이템을 기본값과 함께 정규화합니다.
+function normalizeShopMypageCancelHistoryItem(rawItem: unknown): ShopMypageCancelHistoryItem {
+  const source = (rawItem ?? {}) as Partial<ShopMypageCancelHistoryItem>;
+  return {
+    clmNo: normalizeString(source.clmNo),
+    ordNo: normalizeString(source.ordNo),
+    chgDt: normalizeString(source.chgDt),
+    chgStatCd: normalizeString(source.chgStatCd),
+    chgStatNm: normalizeString(source.chgStatNm),
+    payDelvAmt: normalizeNonNegativeNumber(source.payDelvAmt),
+    refundedCashAmt: normalizeNonNegativeNumber(source.refundedCashAmt),
+    detailList: Array.isArray(source.detailList)
+      ? source.detailList.map((item) => normalizeShopMypageCancelHistoryDetailItem(item))
+      : [],
+  };
+}
+
+// 마이페이지 취소내역 페이지 SSR 데이터를 조회합니다.
+export async function fetchShopMypageCancelHistoryPageServerData(
+  pageNo: number,
+  startDate: string,
+  endDate: string,
+  cookieHeader: string,
+): Promise<ShopMypageCancelHistoryPageResponse> {
+  // 취소내역 API 경로를 생성해 응답을 조회합니다.
+  const path = buildShopMypageCancelHistoryPagePath(pageNo, startDate, endDate);
+  const requestInit = buildRequestInitFromCookie(cookieHeader);
+  const response = await readShopServerApiResponse<ShopMypageCancelHistoryPageResponse>(path, requestInit);
+  const defaultResponse = createDefaultShopMypageCancelHistoryPageResponse();
+
+  // 응답 유효성을 확인한 뒤 기본값을 반환합니다.
+  if (!response) {
+    return {
+      ...defaultResponse,
+      startDate: normalizeString(startDate),
+      endDate: normalizeString(endDate),
+    };
+  }
+
+  return {
+    cancelList: Array.isArray(response.cancelList)
+      ? response.cancelList.map((item) => normalizeShopMypageCancelHistoryItem(item))
+      : defaultResponse.cancelList,
+    cancelCount: normalizeNonNegativeNumber(response.cancelCount),
+    pageNo: typeof response.pageNo === "number" ? resolvePageNo(response.pageNo) : defaultResponse.pageNo,
+    pageSize:
+      typeof response.pageSize === "number" && response.pageSize > 0
+        ? Math.floor(response.pageSize)
+        : defaultResponse.pageSize,
+    totalPageCount:
+      typeof response.totalPageCount === "number" && response.totalPageCount >= 0
+        ? Math.floor(response.totalPageCount)
+        : defaultResponse.totalPageCount,
+    startDate: normalizeString(response.startDate || startDate),
+    endDate: normalizeString(response.endDate || endDate),
+  };
+}
+
+// 마이페이지 취소상세 SSR 데이터를 클레임번호로 조회합니다.
+export async function fetchShopMypageCancelDetailServerData(
+  clmNo: string,
+  cookieHeader: string,
+): Promise<ShopMypageCancelDetailPageResponse> {
+  // 취소상세 API 경로를 생성해 응답을 조회합니다.
+  const path = buildShopMypageCancelDetailPath(clmNo);
+  const requestInit = buildRequestInitFromCookie(cookieHeader);
+  const response = await readShopServerApiResponse<ShopMypageCancelHistoryItem>(path, requestInit);
+
+  // 응답이 없거나 클레임번호가 없으면 null을 반환합니다.
+  if (!response || !response.clmNo) {
+    return { cancelItem: null };
+  }
+
+  return { cancelItem: normalizeShopMypageCancelHistoryItem(response) };
 }
