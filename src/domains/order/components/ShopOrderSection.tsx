@@ -183,6 +183,17 @@ export default function ShopOrderSection({ orderPageData, entryInfo, paymentFail
     window.alert(paymentFailureInfo.message.trim() || "결제가 완료되지 않았습니다. 다시 시도해주세요.");
   }, [paymentFailureInfo.code, paymentFailureInfo.message, paymentFailureInfo.payResult]);
 
+  useEffect(() => {
+    // 쿠폰 할인 금액이 바뀌면 현재 포인트 입력값도 최대 사용 가능 금액 기준으로 즉시 동기화합니다.
+    const nextPointUseAmt = clampPointUseAmt(pointUseAmt, discountAmount.maxPointUseAmt);
+    const nextPointInputValue = nextPointUseAmt > 0 ? String(nextPointUseAmt) : "";
+    if (nextPointUseAmt === pointUseAmt && nextPointInputValue === pointInputValue) {
+      return;
+    }
+    setPointUseAmt(nextPointUseAmt);
+    setPointInputValue(nextPointInputValue);
+  }, [discountAmount.maxPointUseAmt, pointInputValue, pointUseAmt]);
+
   // 주문하기 버튼 클릭 시 결제 준비 후 Toss 결제창을 실행합니다.
   const handleOrderButtonClick = async (): Promise<void> => {
     if (!agreed) {
