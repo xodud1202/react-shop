@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type { ShopHeaderBrand, ShopHeaderCategoryTree } from "@/domains/header/types";
-import { createShopPublicCacheOptions, readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
+import { readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
 
 interface ShopHeaderServerData {
   categories: ShopHeaderCategoryTree[];
@@ -10,14 +10,8 @@ interface ShopHeaderServerData {
 // 헤더에 필요한 카테고리/브랜드 데이터를 SSR에서 조회합니다.
 async function fetchShopHeaderServerDataInternal(): Promise<ShopHeaderServerData> {
   const [categoryResponse, brandResponse] = await Promise.all([
-    readShopServerApiResponse<ShopHeaderCategoryTree[]>(
-      "/api/shop/header/categories",
-      createShopPublicCacheOptions(["shop:header", "shop:header:categories"]),
-    ),
-    readShopServerApiResponse<ShopHeaderBrand[]>(
-      "/api/shop/header/brands",
-      createShopPublicCacheOptions(["shop:header", "shop:header:brands"]),
-    ),
+    readShopServerApiResponse<ShopHeaderCategoryTree[]>("/api/shop/header/categories"),
+    readShopServerApiResponse<ShopHeaderBrand[]>("/api/shop/header/brands"),
   ]);
 
   return {

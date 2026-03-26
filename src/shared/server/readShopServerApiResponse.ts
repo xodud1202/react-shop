@@ -1,11 +1,8 @@
 const SHOP_BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3010";
-const SHOP_PUBLIC_REVALIDATE_SECONDS = 300;
 
-export interface ShopServerApiRequestOptions extends Omit<RequestInit, "cache" | "next"> {
+export interface ShopServerApiRequestOptions extends Omit<RequestInit, "cache"> {
   cacheMode?: RequestCache;
   cookieHeader?: string;
-  revalidateSeconds?: number | false;
-  tagList?: readonly string[];
 }
 
 export interface ShopServerApiResult<T> {
@@ -44,8 +41,6 @@ function resolveRequestHeaders(cookieHeader: string | undefined, headers: Header
 function buildShopServerRequestInit({
   cacheMode = "no-store",
   cookieHeader,
-  revalidateSeconds,
-  tagList,
   headers,
   ...restRequestInit
 }: ShopServerApiRequestOptions = {}): RequestInit {
@@ -61,27 +56,7 @@ function buildShopServerRequestInit({
     requestInit.headers = resolvedHeaders;
   }
 
-  // 공개 캐시 요청이면 revalidate/tag 정보를 함께 전달합니다.
-  if (cacheMode !== "no-store" && (typeof revalidateSeconds !== "undefined" || (tagList?.length ?? 0) > 0)) {
-    requestInit.next = {
-      ...(typeof revalidateSeconds !== "undefined" ? { revalidate: revalidateSeconds } : {}),
-      ...((tagList?.length ?? 0) > 0 ? { tags: [...(tagList ?? [])] } : {}),
-    };
-  }
-
   return requestInit;
-}
-
-// 공개 페이지용 캐시 옵션을 생성합니다.
-export function createShopPublicCacheOptions(
-  tagList: readonly string[],
-  revalidateSeconds: number = SHOP_PUBLIC_REVALIDATE_SECONDS,
-): Pick<ShopServerApiRequestOptions, "cacheMode" | "revalidateSeconds" | "tagList"> {
-  return {
-    cacheMode: "force-cache",
-    revalidateSeconds,
-    tagList,
-  };
 }
 
 // 서버 컴포넌트/서버 액션에서 사용할 쇼핑몰 API 요청을 수행합니다.

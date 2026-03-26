@@ -6,7 +6,7 @@ import type {
   ShopExhibitionPageResponse,
 } from "@/domains/exhibition/types";
 import { cache } from "react";
-import { createShopPublicCacheOptions, readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
+import { readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
 
 // 기획전 목록 기본 응답값을 생성합니다.
 function createDefaultShopExhibitionPageResponse(): ShopExhibitionPageResponse {
@@ -156,10 +156,7 @@ function buildShopExhibitionGoodsPath(exhibitionNo: number, exhibitionTabNo: num
 async function fetchShopExhibitionPageServerDataInternal(pageNo: number): Promise<ShopExhibitionPageResponse> {
   // 기획전 목록 API 경로를 생성해 응답을 조회합니다.
   const path = buildShopExhibitionListPath(pageNo);
-  const response = await readShopServerApiResponse<ShopExhibitionPageResponse>(
-    path,
-    createShopPublicCacheOptions(["shop:exhibition", "shop:exhibition:list"]),
-  );
+  const response = await readShopServerApiResponse<ShopExhibitionPageResponse>(path);
   const defaultResponse = createDefaultShopExhibitionPageResponse();
 
   // 응답 유효성을 확인한 뒤 기본값을 반환합니다.
@@ -189,10 +186,7 @@ async function fetchShopExhibitionDetailServerDataInternal(exhibitionNo: number)
 
   // 기획전 상세 API를 호출해 응답을 정규화합니다.
   const path = buildShopExhibitionDetailPath(safeExhibitionNo);
-  const response = await readShopServerApiResponse<ShopExhibitionDetailResponse>(
-    path,
-    createShopPublicCacheOptions(["shop:exhibition", `shop:exhibition:${safeExhibitionNo}`]),
-  );
+  const response = await readShopServerApiResponse<ShopExhibitionDetailResponse>(path);
   if (!response) {
     return null;
   }
@@ -225,14 +219,7 @@ async function fetchShopExhibitionGoodsPageServerDataInternal(
 
   // 기획전 탭 상품 API를 호출해 응답을 정규화합니다.
   const path = buildShopExhibitionGoodsPath(safeExhibitionNo, safeExhibitionTabNo, pageNo);
-  const response = await readShopServerApiResponse<ShopExhibitionGoodsPageResponse>(
-    path,
-    createShopPublicCacheOptions([
-      "shop:exhibition",
-      `shop:exhibition:${safeExhibitionNo}`,
-      `shop:exhibition:${safeExhibitionNo}:tab:${safeExhibitionTabNo}`,
-    ]),
-  );
+  const response = await readShopServerApiResponse<ShopExhibitionGoodsPageResponse>(path);
   const defaultResponse = createDefaultShopExhibitionGoodsPageResponse();
   if (!response) {
     return defaultResponse;
