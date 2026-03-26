@@ -53,6 +53,8 @@ jobs:
           cp -R .next/static deploy/.next/static
           cp -R public deploy/public
           cp ecosystem.config.js deploy/ecosystem.config.js
+          rm -f deploy/.env
+          rm -f deploy/.env.local
 
       - name: SSH 에이전트 설정
         uses: webfactory/ssh-agent@v0.9.0
@@ -65,13 +67,11 @@ jobs:
       - name: 배포 산출물 업로드
         run: |
           ssh-keyscan -H ${{ secrets.OCI_HOST }} >> ~/.ssh/known_hosts
+          ssh ${{ secrets.OCI_USER }}@${{ secrets.OCI_HOST }} "rm -rf /tmp/react-shop-deploy && mkdir -p /tmp/react-shop-deploy"
           rsync -az \
-            --filter='P .env' \
-            --filter='P .env.local' \
-            --filter='P .env.production' \
             --delete \
-            ./deploy/ ${{ secrets.OCI_USER }}@${{ secrets.OCI_HOST }}:/opt/react-shop/
+            ./deploy/ ${{ secrets.OCI_USER }}@${{ secrets.OCI_HOST }}:/tmp/react-shop-deploy/
 
-      - name: PM2 프로세스 재생성
+      - name: 서버 반영 및 PM2 프로세스 재생성
         run: |
-          ssh ${{ secrets.OCI_USER }}@${{ secrets.OCI_HOST }} "sudo -i bash -lc 'set -e; [ -x \"${{ secrets.OCI_NODE_BIN }}\" ] || { echo OCI_NODE_BIN invalid; exit 127; }; export PATH=\$(dirname \"${{ secrets.OCI_NODE_BIN }}\"):\$PATH; cd /opt/react-shop; [ -f server.js ] || { echo standalone server.js not found; exit 1; }; pm2 delete react-shop >/dev/null 2>&1 || true; pm2 start ecosystem.config.js --update-env'"
+          ssh ${{ secrets.OCI_USER }}@${{ secrets.OCI_HOST }} "sudo -i bash -lc 'set -e; [ -x \"${{ secrets.OCI_NODE_BIN }}\" ] || { echo OCI_NODE_BIN invalid; exit 127; }; export PATH=\$(dirname \"${{ secrets.OCI_NODE_BIN }}\"):\$PATH; STAGING_DIR=/tmp/react-shop-deploy; APP_DIR=/opt/react-shop; [ -d \"\$STAGING_DIR\" ] || { echo staging dir not found; exit 1; }; mkdir -p \"\$APP_DIR\"; rsync -az --delete --filter=\"P .env\" --filter=\"P .env.local\" \"\$STAGING_DIR/\" \"\$APP_DIR/\"; rm -rf \"\$STAGING_DIR\"; cd \"\$APP_DIR\"; [ -f server.js ] || { echo standalone server.js not found; exit 1; }; pm2 delete react-shop >/dev/null 2>&1 || true; pm2 start ecosystem.config.js --update-env'"
