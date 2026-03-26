@@ -241,3 +241,35 @@ export interface ShopMypageCouponPageResponse {
   downloadablePageSize: number;
   downloadableTotalPageCount: number;
 }
+
+// 마이페이지 포인트 내역 아이템 타입입니다. (CUSTOMER_POINT_DETAIL 기반)
+export interface ShopMypagePointItem {
+  /** 포인트번호 (CUSTOMER_POINT_BASE FK) */
+  pntNo: number;
+  /** 포인트 금액 (양수: 적립/복구, 음수: 사용/차감) */
+  pntAmt: number;
+  /** 연관 주문번호 (없으면 null) */
+  ordNo: string | null;
+  /** 비고 / 내용 */
+  bigo: string;
+  /** 발생 일시 (YYYY-MM-DD) */
+  regDt: string;
+}
+
+// 마이페이지 포인트 내역 페이지 응답 타입입니다.
+export interface ShopMypagePointPageResponse {
+  /** 현재 사용 가능한 포인트 합계 */
+  availablePointAmt: number;
+  /** 7일 이내 만료 예정 포인트 합계 */
+  expiringPointAmt: number;
+  /** 포인트 내역 목록 */
+  pointList: ShopMypagePointItem[];
+  /** 전체 포인트 내역 건수 */
+  pointCount: number;
+  /** 현재 페이지 번호 */
+  pageNo: number;
+  /** 페이지 크기 */
+  pageSize: number;
+  /** 전체 페이지 수 */
+  totalPageCount: number;
+}

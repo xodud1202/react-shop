@@ -17,6 +17,8 @@ import type {
   ShopMypageOrderStatusSummary,
   ShopMypageOwnedCouponItem,
   ShopMypageWishPageResponse,
+  ShopMypagePointItem,
+  ShopMypagePointPageResponse,
 } from "@/domains/mypage/types";
 import { readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
 
@@ -656,4 +658,70 @@ export async function fetchShopMypageCancelDetailServerData(
   }
 
   return { cancelItem: normalizeShopMypageCancelHistoryItem(response) };
+}
+
+// 마이페이지 포인트 내역 기본 응답값을 생성합니다.
+function createDefaultShopMypagePointPageResponse(): ShopMypagePointPageResponse {
+  return {
+    availablePointAmt: 0,
+    expiringPointAmt: 0,
+    pointList: [],
+    pointCount: 0,
+    pageNo: 1,
+    pageSize: 20,
+    totalPageCount: 0,
+  };
+}
+
+// 포인트 내역 아이템을 정규화합니다. (CUSTOMER_POINT_DETAIL 기반)
+function normalizeShopMypagePointItem(source: Record<string, unknown>): ShopMypagePointItem {
+  const rawPntAmt = typeof source.pntAmt === "number" ? Math.floor(source.pntAmt) : 0;
+  return {
+    pntNo: normalizeNonNegativeNumber(source.pntNo),
+    pntAmt: rawPntAmt,
+    ordNo: normalizeNullableString(source.ordNo),
+    bigo: normalizeString(source.bigo),
+    regDt: normalizeString(source.regDt),
+  };
+}
+
+// 포인트 내역 페이지 응답을 정규화합니다.
+function normalizeShopMypagePointPageResponse(source: Record<string, unknown>): ShopMypagePointPageResponse {
+  const rawPointList = Array.isArray(source.pointList) ? source.pointList : [];
+  return {
+    availablePointAmt: normalizeNonNegativeNumber(source.availablePointAmt),
+    expiringPointAmt: normalizeNonNegativeNumber(source.expiringPointAmt),
+    pointList: rawPointList
+      .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+      .map(normalizeShopMypagePointItem),
+    pointCount: normalizeNonNegativeNumber(source.pointCount),
+    pageNo: normalizeNonNegativeNumber(source.pageNo) || 1,
+    pageSize: normalizeNonNegativeNumber(source.pageSize) || 20,
+    totalPageCount: normalizeNonNegativeNumber(source.totalPageCount),
+  };
+}
+
+// 마이페이지 포인트 내역 API 경로를 생성합니다.
+function buildShopMypagePointPagePath(pageNo: number): string {
+  const queryParams = new URLSearchParams();
+  queryParams.set("pageNo", String(Math.max(Math.floor(pageNo), 1)));
+  return `/api/shop/mypage/point/page?${queryParams.toString()}`;
+}
+
+// 마이페이지 포인트 내역 SSR 데이터를 조회합니다.
+export async function fetchShopMypagePointPageServerData(
+  pageNo: number,
+  cookieHeader: string,
+): Promise<ShopMypagePointPageResponse> {
+  // 포인트 내역 API 경로를 생성해 응답을 조회합니다.
+  const path = buildShopMypagePointPagePath(pageNo);
+  const requestInit = buildRequestInitFromCookie(cookieHeader);
+  const response = await readShopServerApiResponse<Record<string, unknown>>(path, requestInit);
+
+  // 응답이 없으면 기본값을 반환합니다.
+  if (!response) {
+    return createDefaultShopMypagePointPageResponse();
+  }
+
+  return normalizeShopMypagePointPageResponse(response);
 }

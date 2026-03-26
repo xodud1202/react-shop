@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const backendUrl = process.env.BACKEND_URL ?? "http://localhost:3010";
 
 const nextConfig: NextConfig = {
+  // GitHub Runner에서 빌드한 서버 산출물만 배포할 수 있도록 standalone 출력을 사용합니다.
+  output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
   images: {
