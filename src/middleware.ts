@@ -1,7 +1,11 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-// 현재 요청 경로를 로그인 복귀용 상대경로로 생성합니다.
+/**
+ * 현재 요청 경로를 로그인 복귀용 상대경로로 생성합니다.
+ * @param request 현재 요청입니다.
+ * @returns 로그인 복귀용 상대경로입니다.
+ */
 function resolveReturnUrl(request: NextRequest): string {
   // pathname + search를 조합해 현재 페이지 주소를 구성합니다.
   const requestPathname = request.nextUrl.pathname;
@@ -9,7 +13,11 @@ function resolveReturnUrl(request: NextRequest): string {
   return `${requestPathname}${requestSearch}`;
 }
 
-// 로그인 페이지 이동 URL을 생성합니다.
+/**
+ * 로그인 페이지 이동 URL을 생성합니다.
+ * @param request 현재 요청입니다.
+ * @returns 로그인 페이지 이동 URL입니다.
+ */
 function resolveLoginMoveUrl(request: NextRequest) {
   // 로그인 페이지 경로에 returnUrl 쿼리를 포함합니다.
   const loginMoveUrl = request.nextUrl.clone();
@@ -18,8 +26,12 @@ function resolveLoginMoveUrl(request: NextRequest) {
   return loginMoveUrl;
 }
 
-// /mypage 하위 경로의 로그인 여부를 확인하는 프록시를 실행합니다.
-export function proxy(request: NextRequest) {
+/**
+ * /mypage 하위 경로의 로그인 여부를 확인하는 엣지 미들웨어를 실행합니다.
+ * @param request 현재 요청입니다.
+ * @returns 다음 단계 응답 또는 로그인 페이지 리다이렉트 응답입니다.
+ */
+export function middleware(request: NextRequest) {
   // 로그인 쿠키가 있으면 요청을 그대로 통과시킵니다.
   const custNoCookieValue = request.cookies.get("cust_no")?.value ?? "";
   if (custNoCookieValue.trim() !== "") {
@@ -30,6 +42,9 @@ export function proxy(request: NextRequest) {
   return NextResponse.redirect(resolveLoginMoveUrl(request));
 }
 
+/**
+ * 미들웨어 적용 경로를 정의합니다.
+ */
 export const config = {
   matcher: ["/mypage/:path*", "/cart"],
 };
