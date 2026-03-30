@@ -155,6 +155,12 @@ export interface ShopOrderPointSaveSummary {
 // 주문서 결제수단 코드 타입입니다.
 export type ShopOrderPaymentMethodCd = "" | "PAY_METHOD_01" | "PAY_METHOD_02" | "PAY_METHOD_03";
 
+// 주문서 환불은행 선택 항목 타입입니다.
+export interface ShopOrderRefundBankOption {
+  cd: string;
+  cdNm: string;
+}
+
 // 주문서 진입 정보 타입입니다.
 export interface ShopOrderEntryInfo {
   from: "cart" | "goods";
@@ -178,6 +184,9 @@ export interface ShopOrderPaymentPrepareRequest {
   discountSelection: ShopOrderDiscountSelection;
   pointUseAmt: number;
   paymentMethodCd: ShopOrderPaymentMethodCd;
+  refundBankCd: string;
+  refundBankNo: string;
+  refundHolderNm: string;
 }
 
 // 주문 결제 준비 응답 타입입니다.
@@ -241,6 +250,7 @@ export interface ShopOrderPageResponse {
   discountSelection: ShopOrderDiscountSelection;
   discountAmount: ShopOrderDiscountAmount;
   paymentConfig: ShopOrderPaymentConfig;
+  refundBankList: ShopOrderRefundBankOption[];
   customerInfo: ShopOrderCustomerInfo;
   pointSaveSummary: ShopOrderPointSaveSummary;
 }

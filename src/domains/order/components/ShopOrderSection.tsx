@@ -20,6 +20,7 @@ import type {
   ShopOrderEntryInfo,
   ShopOrderPageResponse,
   ShopOrderPaymentFailureInfo,
+  ShopOrderPaymentPrepareRequest,
   ShopOrderPaymentMethodCd,
 } from "@/domains/order/types";
 import { requestTossPayment } from "@/domains/order/utils/tossPayments";
@@ -136,9 +137,19 @@ function sanitizePointInputValue(value: string): string {
   return String(normalizeNonNegativeNumber(Number(digitsOnly)));
 }
 
+// 환불 계좌번호 입력값에서 숫자만 남기고 정리합니다.
+function sanitizeRefundAccountNumber(value: string): string {
+  return value.replace(/[^\d]/g, "").slice(0, 50);
+}
+
 // 현재 입력한 포인트 사용 금액을 최대 사용 가능 금액 기준으로 보정합니다.
 function clampPointUseAmt(pointUseAmt: number, maxPointUseAmt: number): number {
   return Math.min(normalizeNonNegativeNumber(pointUseAmt), normalizeNonNegativeNumber(maxPointUseAmt));
+}
+
+// 현재 선택한 결제수단이 무통장입금인지 여부를 반환합니다.
+function isVirtualAccountPaymentMethod(paymentMethodCd: ShopOrderPaymentMethodCd): boolean {
+  return paymentMethodCd === "PAY_METHOD_02";
 }
 
 // 현재 적용된 쿠폰 개수 요약 문구를 생성합니다.
@@ -174,6 +185,9 @@ export default function ShopOrderSection({ orderPageData, entryInfo, paymentFail
   const [showCouponLayer, setShowCouponLayer] = useState(false);
   const [isQuotingDiscount, setIsQuotingDiscount] = useState(false);
   const [selectedPaymentMethodCd, setSelectedPaymentMethodCd] = useState<ShopOrderPaymentMethodCd>("");
+  const [refundBankCd, setRefundBankCd] = useState("");
+  const [refundBankNo, setRefundBankNo] = useState("");
+  const [refundHolderNm, setRefundHolderNm] = useState("");
   const [isPreparingPayment, setIsPreparingPayment] = useState(false);
   const [pointUseAmt, setPointUseAmt] = useState(0);
   const [pointInputValue, setPointInputValue] = useState("");
@@ -215,20 +229,40 @@ export default function ShopOrderSection({ orderPageData, entryInfo, paymentFail
       window.alert("결제수단을 선택해주세요.");
       return;
     }
+    if (isVirtualAccountPaymentMethod(selectedPaymentMethodCd)) {
+      // 무통장입금은 환불 계좌 3개 항목을 모두 입력해야 결제 준비를 진행합니다.
+      if (refundBankCd.trim() === "") {
+        window.alert("환불 은행을 선택해주세요.");
+        return;
+      }
+      if (refundBankNo.trim() === "") {
+        window.alert("환불 계좌번호를 입력해주세요.");
+        return;
+      }
+      if (refundHolderNm.trim() === "") {
+        window.alert("환불 예금주명을 입력해주세요.");
+        return;
+      }
+    }
 
     try {
       setIsPreparingPayment(true);
+      // 현재 주문서 상태를 결제 준비 요청 객체로 정리합니다.
+      const paymentPrepareRequest: ShopOrderPaymentPrepareRequest = {
+        from: entryInfo.from,
+        goodsId: entryInfo.goodsId,
+        cartIdList: entryInfo.cartIdList,
+        addressNm: selectedAddress.addressNm,
+        discountSelection,
+        pointUseAmt,
+        paymentMethodCd: selectedPaymentMethodCd,
+        refundBankCd,
+        refundBankNo,
+        refundHolderNm,
+      };
       const result = await requestShopClientApi(getShopOrderPaymentPreparePath(), {
         method: "POST",
-        body: {
-          from: entryInfo.from,
-          goodsId: entryInfo.goodsId,
-          cartIdList: entryInfo.cartIdList,
-          addressNm: selectedAddress.addressNm,
-          discountSelection,
-          pointUseAmt,
-          paymentMethodCd: selectedPaymentMethodCd,
-        },
+        body: paymentPrepareRequest,
       });
 
       // 로그인 세션이 만료되면 안내 문구를 우선 노출합니다.
@@ -576,6 +610,58 @@ export default function ShopOrderSection({ orderPageData, entryInfo, paymentFail
                   퀵계좌이체
                 </button>
               </div>
+
+              {isVirtualAccountPaymentMethod(selectedPaymentMethodCd) ? (
+                <div className={styles.refundAccountGrid}>
+                  <div className={styles.refundField}>
+                    <label className={styles.refundFieldTitle} htmlFor="refund-bank-code">
+                      환불 은행
+                    </label>
+                    <select
+                      id="refund-bank-code"
+                      className={styles.refundSelect}
+                      value={refundBankCd}
+                      onChange={(event) => setRefundBankCd(event.target.value)}
+                    >
+                      <option value="">은행 선택</option>
+                      {orderPageData.refundBankList.map((bank) => (
+                        <option key={bank.cd} value={bank.cd}>
+                          {bank.cdNm}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className={styles.refundField}>
+                    <label className={styles.refundFieldTitle} htmlFor="refund-bank-no">
+                      환불 계좌번호
+                    </label>
+                    <input
+                      id="refund-bank-no"
+                      type="text"
+                      inputMode="numeric"
+                      className={styles.refundInput}
+                      value={refundBankNo}
+                      onChange={(event) => setRefundBankNo(sanitizeRefundAccountNumber(event.target.value))}
+                      placeholder="숫자만 입력"
+                    />
+                  </div>
+
+                  <div className={styles.refundField}>
+                    <label className={styles.refundFieldTitle} htmlFor="refund-holder-nm">
+                      환불 예금주
+                    </label>
+                    <input
+                      id="refund-holder-nm"
+                      type="text"
+                      className={styles.refundInput}
+                      value={refundHolderNm}
+                      onChange={(event) => setRefundHolderNm(event.target.value)}
+                      placeholder="예금주명 입력"
+                    />
+                  </div>
+                </div>
+              ) : null}
             </div>
           </section>
         </div>

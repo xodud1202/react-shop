@@ -22,6 +22,7 @@ import type {
   ShopOrderPaymentPrepareResponse,
   ShopOrderPageResponse,
   ShopOrderPointSaveSummary,
+  ShopOrderRefundBankOption,
 } from "@/domains/order/types";
 
 // 숫자 값을 0 이상 정수로 보정합니다.
@@ -35,6 +36,15 @@ function normalizeNonNegativeNumber(value: unknown): number {
 // 문자열 값을 기본값과 함께 정규화합니다.
 function normalizeString(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+// 주문서 환불은행 선택 항목을 기본값과 함께 정규화합니다.
+function normalizeShopOrderRefundBankOption(rawOption: unknown): ShopOrderRefundBankOption {
+  const source = (rawOption ?? {}) as Partial<ShopOrderRefundBankOption>;
+  return {
+    cd: normalizeString(source.cd),
+    cdNm: normalizeString(source.cdNm),
+  };
 }
 
 // 주문서 페이지 API 경로를 생성합니다.
@@ -321,6 +331,7 @@ export function createDefaultShopOrderPageResponse(): ShopOrderPageResponse {
       successUrlBase: "",
       failUrlBase: "",
     },
+    refundBankList: [],
     customerInfo: {
       custNo: 0,
       custNm: "",
@@ -355,6 +366,7 @@ export function normalizeShopOrderPageResponse(rawResponse: unknown): ShopOrderP
     discountSelection: normalizeShopOrderDiscountSelection(source.discountSelection),
     discountAmount: normalizeShopOrderDiscountAmount(source.discountAmount),
     paymentConfig: normalizeShopOrderPaymentConfig(source.paymentConfig),
+    refundBankList: Array.isArray(source.refundBankList) ? source.refundBankList.map(normalizeShopOrderRefundBankOption) : [],
     customerInfo: normalizeShopOrderCustomerInfo(source.customerInfo),
     pointSaveSummary: normalizeShopOrderPointSaveSummary(source.pointSaveSummary),
   };
