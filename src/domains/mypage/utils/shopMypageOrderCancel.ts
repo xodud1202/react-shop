@@ -223,7 +223,7 @@ interface ShopMypageOrderSliceAmount {
   pointUseAmt: number;
 }
 
-// 주문상세 행의 누적 배분 금액을 원주문 수량 기준으로 계산합니다.
+// 주문상세 행의 누적 배분 금액을 현재 잔여 수량 기준으로 계산합니다.
 function resolveShopMypageOrderCumulativeAllocatedAmt(totalAllocatedAmt: number, totalQty: number, appliedQty: number): number {
   const safeTotalAllocatedAmt = normalizeNonNegativeInteger(totalAllocatedAmt);
   const safeTotalQty = Math.max(totalQty, 0);
@@ -237,37 +237,35 @@ function resolveShopMypageOrderCumulativeAllocatedAmt(totalAllocatedAmt: number,
   return Math.floor((safeTotalAllocatedAmt * safeAppliedQty) / safeTotalQty);
 }
 
-// 주문상세 행의 특정 수량 기준 금액/할인 배분값을 계산합니다.
+// 주문상세 행의 취소 수량 기준 금액/할인 배분값을 계산합니다.
 function buildShopMypageOrderSliceAmount(
   detailItem: ShopMypageOrderDetailItem,
   quantity: number,
-  canceledBeforeQty: number,
+  currentRemainingQty: number,
 ): ShopMypageOrderSliceAmount {
-  const originalQty = normalizeNonNegativeInteger(detailItem.ordQty);
-  const resolvedCanceledBeforeQty = Math.max(Math.min(canceledBeforeQty, originalQty), 0);
-  const remainingQty = Math.max(originalQty - resolvedCanceledBeforeQty, 0);
-  const resolvedQuantity = Math.min(Math.max(quantity, 0), remainingQty);
+  const safeCurrentRemainingQty = normalizeNonNegativeInteger(currentRemainingQty);
+  const resolvedQuantity = Math.min(Math.max(quantity, 0), safeCurrentRemainingQty);
   const supplyAmt = normalizeNonNegativeInteger(detailItem.supplyAmt) * resolvedQuantity;
   const orderAmt =
     (normalizeNonNegativeInteger(detailItem.saleAmt) + normalizeNonNegativeInteger(detailItem.addAmt)) * resolvedQuantity;
   const goodsDiscountAmt = Math.max(supplyAmt - orderAmt, 0);
 
-  // 누적 취소 전/후 배분 차이만큼 이번 수량의 쿠폰/포인트 금액을 계산합니다.
-  const goodsCouponDiscountAmt =
-    resolveShopMypageOrderCumulativeAllocatedAmt(
-      detailItem.goodsCouponDiscountAmt,
-      originalQty,
-      resolvedCanceledBeforeQty + resolvedQuantity,
-    ) - resolveShopMypageOrderCumulativeAllocatedAmt(detailItem.goodsCouponDiscountAmt, originalQty, resolvedCanceledBeforeQty);
-  const cartCouponDiscountAmt =
-    resolveShopMypageOrderCumulativeAllocatedAmt(
-      detailItem.cartCouponDiscountAmt,
-      originalQty,
-      resolvedCanceledBeforeQty + resolvedQuantity,
-    ) - resolveShopMypageOrderCumulativeAllocatedAmt(detailItem.cartCouponDiscountAmt, originalQty, resolvedCanceledBeforeQty);
-  const pointUseAmt =
-    resolveShopMypageOrderCumulativeAllocatedAmt(detailItem.pointUseAmt, originalQty, resolvedCanceledBeforeQty + resolvedQuantity) -
-    resolveShopMypageOrderCumulativeAllocatedAmt(detailItem.pointUseAmt, originalQty, resolvedCanceledBeforeQty);
+  // 현재 ORDER_DETAIL에 남아 있는 할인금액을 RMN_QTY 기준으로 비례 배분합니다.
+  const goodsCouponDiscountAmt = resolveShopMypageOrderCumulativeAllocatedAmt(
+    detailItem.goodsCouponDiscountAmt,
+    safeCurrentRemainingQty,
+    resolvedQuantity,
+  );
+  const cartCouponDiscountAmt = resolveShopMypageOrderCumulativeAllocatedAmt(
+    detailItem.cartCouponDiscountAmt,
+    safeCurrentRemainingQty,
+    resolvedQuantity,
+  );
+  const pointUseAmt = resolveShopMypageOrderCumulativeAllocatedAmt(
+    detailItem.pointUseAmt,
+    safeCurrentRemainingQty,
+    resolvedQuantity,
+  );
 
   return {
     supplyAmt,
@@ -276,6 +274,38 @@ function buildShopMypageOrderSliceAmount(
     goodsCouponDiscountAmt,
     cartCouponDiscountAmt,
     pointUseAmt,
+  };
+}
+
+// 주문상세 행의 취소 반영 후 현재 남을 금액/할인 배분값을 계산합니다.
+function buildShopMypageOrderRemainingSliceAmount(
+  detailItem: ShopMypageOrderDetailItem,
+  cancelQty: number,
+  currentRemainingQty: number,
+): ShopMypageOrderSliceAmount {
+  const safeCurrentRemainingQty = normalizeNonNegativeInteger(currentRemainingQty);
+  const resolvedCancelQty = Math.min(Math.max(cancelQty, 0), safeCurrentRemainingQty);
+  const remainingQty = Math.max(safeCurrentRemainingQty - resolvedCancelQty, 0);
+  const canceledSliceAmount = buildShopMypageOrderSliceAmount(detailItem, resolvedCancelQty, safeCurrentRemainingQty);
+  const supplyAmt = normalizeNonNegativeInteger(detailItem.supplyAmt) * remainingQty;
+  const orderAmt =
+    (normalizeNonNegativeInteger(detailItem.saleAmt) + normalizeNonNegativeInteger(detailItem.addAmt)) * remainingQty;
+  const goodsDiscountAmt = Math.max(supplyAmt - orderAmt, 0);
+
+  // 현재 ORDER_DETAIL에 남아 있는 할인금액에서 이번 취소분만 제외해 남은 금액을 계산합니다.
+  return {
+    supplyAmt,
+    orderAmt,
+    goodsDiscountAmt,
+    goodsCouponDiscountAmt: Math.max(
+      normalizeNonNegativeInteger(detailItem.goodsCouponDiscountAmt) - canceledSliceAmount.goodsCouponDiscountAmt,
+      0,
+    ),
+    cartCouponDiscountAmt: Math.max(
+      normalizeNonNegativeInteger(detailItem.cartCouponDiscountAmt) - canceledSliceAmount.cartCouponDiscountAmt,
+      0,
+    ),
+    pointUseAmt: Math.max(normalizeNonNegativeInteger(detailItem.pointUseAmt) - canceledSliceAmount.pointUseAmt, 0),
   };
 }
 
@@ -335,14 +365,12 @@ export function buildShopMypageOrderCancelPreviewResult(
 
   // 각 행을 취소 수량과 남는 수량으로 분리해 금액 요약을 계산합니다.
   for (const detailItem of order.detailList) {
-    const originalQty = normalizeNonNegativeInteger(detailItem.ordQty);
     const currentRemainingQty = resolveCurrentRemainingQty(detailItem);
     if (currentRemainingQty < 1) {
       continue;
     }
     activeItemCount += 1;
     activeOrderAmt += (normalizeNonNegativeInteger(detailItem.saleAmt) + normalizeNonNegativeInteger(detailItem.addAmt)) * currentRemainingQty;
-    const canceledBeforeQty = Math.max(originalQty - currentRemainingQty, 0);
 
     // resolveShopMypageOrderCancelSelectionItem 내부에서 이미 clamp 처리된 값을 사용합니다.
     const selectionItem = resolveShopMypageOrderCancelSelectionItem(selectionMap, detailItem);
@@ -352,12 +380,12 @@ export function buildShopMypageOrderCancelPreviewResult(
     if (cancelQty > 0) {
       selectedItemCount += 1;
       selectedQtyCount += cancelQty;
-      accumulateCancelPreviewSummary(cancelPreviewSummary, buildShopMypageOrderSliceAmount(detailItem, cancelQty, canceledBeforeQty));
+      accumulateCancelPreviewSummary(cancelPreviewSummary, buildShopMypageOrderSliceAmount(detailItem, cancelQty, currentRemainingQty));
     }
     if (remainingQty > 0) {
       accumulateOrderAmountSummary(
         remainingAmountSummary,
-        buildShopMypageOrderSliceAmount(detailItem, remainingQty, canceledBeforeQty),
+        buildShopMypageOrderRemainingSliceAmount(detailItem, cancelQty, currentRemainingQty),
       );
     }
   }
