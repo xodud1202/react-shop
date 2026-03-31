@@ -21,6 +21,7 @@ import type {
   ShopMypagePointItem,
   ShopMypagePointPageResponse,
 } from "@/domains/mypage/types";
+import { normalizeShopOrderAddress } from "@/domains/order/api/orderApi";
 import { readShopServerApiResponse } from "@/shared/server/readShopServerApiResponse";
 
 // 마이페이지 위시리스트 기본 응답값을 생성합니다.
@@ -610,6 +611,11 @@ export async function fetchShopMypageOrderReturnPageServerData(
       ? response.reasonList.map((item) => normalizeShopMypageOrderCancelReasonItem(item))
       : [],
     siteInfo: response.siteInfo ? normalizeShopMypageOrderCancelSiteInfo(response.siteInfo) : defaultSiteInfo,
+    addressList: Array.isArray(response.addressList) ? response.addressList.map((item) => normalizeShopOrderAddress(item)) : [],
+    pickupAddress:
+      response.pickupAddress && typeof response.pickupAddress === "object"
+        ? normalizeShopOrderAddress(response.pickupAddress)
+        : null,
   };
 }
 

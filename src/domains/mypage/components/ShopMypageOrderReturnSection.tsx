@@ -8,6 +8,9 @@ import type {
   ShopMypageOrderReturnPageResponse,
   ShopMypageOrderReturnReasonItem,
 } from "@/domains/mypage/types";
+import ShopOrderAddressRegisterLayer from "@/domains/order/components/ShopOrderAddressRegisterLayer";
+import ShopOrderAddressSelectLayer from "@/domains/order/components/ShopOrderAddressSelectLayer";
+import type { ShopOrderAddress, ShopOrderAddressSaveResponse } from "@/domains/order/types";
 import { formatShopMypageOrderPrice } from "@/domains/mypage/utils/shopMypageOrder";
 import {
   buildShopMypageOrderReturnPreviewResult,
@@ -198,6 +201,27 @@ function isShopMypageOrderReturnReasonDetailRequired(reasonItem: ShopMypageOrder
   return (reasonItem?.cdNm || "").includes("기타");
 }
 
+// 회수지 기본주소 라인을 포맷 문자열로 변환합니다.
+function formatPickupAddressLine(address: ShopOrderAddress): string {
+  return `(${address.postNo}) ${address.baseAddress}`;
+}
+
+// 회수지 연락처 라인을 상태에 맞게 생성합니다.
+function formatPickupContactLine(address: ShopOrderAddress): string {
+  const receiverName = address.rsvNm.trim();
+  const phoneNumber = address.phoneNumber.trim();
+  if (receiverName !== "" && phoneNumber !== "") {
+    return `${receiverName} | ${phoneNumber}`;
+  }
+  if (receiverName !== "") {
+    return receiverName;
+  }
+  if (phoneNumber !== "") {
+    return phoneNumber;
+  }
+  return "연락처 정보 없음";
+}
+
 // 반품 신청 화면을 렌더링합니다.
 export default function ShopMypageOrderReturnSection({
   orderReturnPageData,
@@ -205,6 +229,12 @@ export default function ShopMypageOrderReturnSection({
 }: ShopMypageOrderReturnSectionProps) {
   const { order, amountSummary, reasonList, siteInfo } = orderReturnPageData;
   const returnTarget = resolveShopMypageOrderReturnTarget(order, initialOrdDtlNo);
+  const [addressList, setAddressList] = useState<ShopOrderAddress[]>(orderReturnPageData.addressList);
+  const [selectedPickupAddress, setSelectedPickupAddress] = useState<ShopOrderAddress | null>(orderReturnPageData.pickupAddress);
+  const [showAddressSelectLayer, setShowAddressSelectLayer] = useState<boolean>(false);
+  const [showAddressRegisterLayer, setShowAddressRegisterLayer] = useState<boolean>(false);
+  const [addressRegisterMode, setAddressRegisterMode] = useState<"create" | "edit">("create");
+  const [editingAddress, setEditingAddress] = useState<ShopOrderAddress | null>(null);
   const [selectionMap, setSelectionMap] = useState<ShopMypageOrderReturnSelectionMap>(() =>
     createInitialShopMypageOrderReturnSelectionMap(order, returnTarget.initialOrdDtlNo),
   );
@@ -249,6 +279,68 @@ export default function ShopMypageOrderReturnSection({
   if (!order) {
     return null;
   }
+
+  // 회수지 선택 레이어를 엽니다.
+  const handleOpenAddressSelectLayer = (): void => {
+    setShowAddressSelectLayer(true);
+  };
+
+  // 회수지 선택 레이어를 닫습니다.
+  const handleCloseAddressSelectLayer = (): void => {
+    setShowAddressSelectLayer(false);
+  };
+
+  // 회수지 등록 레이어를 엽니다.
+  const handleOpenAddressRegisterLayer = (): void => {
+    setShowAddressSelectLayer(false);
+    setAddressRegisterMode("create");
+    setEditingAddress(null);
+    setShowAddressRegisterLayer(true);
+  };
+
+  // 회수지 수정 레이어를 엽니다.
+  const handleOpenAddressEditLayer = (address: ShopOrderAddress): void => {
+    setShowAddressSelectLayer(false);
+    setAddressRegisterMode("edit");
+    setEditingAddress(address);
+    setShowAddressRegisterLayer(true);
+  };
+
+  // 회수지 등록 레이어를 닫습니다.
+  const handleCloseAddressRegisterLayer = (): void => {
+    setShowAddressRegisterLayer(false);
+    setAddressRegisterMode("create");
+    setEditingAddress(null);
+  };
+
+  // 선택한 회수지를 현재 화면 상태에 반영합니다.
+  const handleSelectPickupAddress = (address: ShopOrderAddress): void => {
+    setSelectedPickupAddress(address);
+    setShowAddressSelectLayer(false);
+  };
+
+  // 회수지 등록/수정 성공 결과를 현재 화면 상태에 반영합니다.
+  const handleAddressRegisterSuccess = (result: ShopOrderAddressSaveResponse): void => {
+    const currentSelectedAddressNm = selectedPickupAddress?.addressNm ?? "";
+    const isEditingSelectedPickupAddress = editingAddress !== null && currentSelectedAddressNm === editingAddress.addressNm;
+    const preservedSelectedPickupAddress =
+      currentSelectedAddressNm === ""
+        ? null
+        : result.addressList.find((address) => address.addressNm === currentSelectedAddressNm) ??
+          (isEditingSelectedPickupAddress ? null : selectedPickupAddress);
+    const nextSelectedPickupAddress =
+      addressRegisterMode === "edit"
+        ? isEditingSelectedPickupAddress
+          ? result.savedAddress ?? result.defaultAddress ?? preservedSelectedPickupAddress
+          : preservedSelectedPickupAddress ?? result.savedAddress ?? result.defaultAddress ?? null
+        : result.savedAddress ?? result.defaultAddress ?? preservedSelectedPickupAddress;
+    setAddressList(result.addressList);
+    setSelectedPickupAddress(nextSelectedPickupAddress);
+    setShowAddressRegisterLayer(false);
+    setShowAddressSelectLayer(false);
+    setAddressRegisterMode("create");
+    setEditingAddress(null);
+  };
 
   // 전체선택 체크박스 변경 시 반품 가능 상품만 일괄 선택/해제합니다.
   const handleToggleAll = (checked: boolean): void => {
@@ -380,6 +472,39 @@ export default function ShopMypageOrderReturnSection({
         <ShopMypageOrderAmountTable columnList={returnPreviewAmountColumnList} />
       </section>
 
+      <section className={styles.detailSectionBlock}>
+        <div className={styles.returnPickupHeader}>
+          <h2 className={styles.detailSectionTitle}>반품 회수지</h2>
+          <button type="button" className={styles.returnPickupButton} onClick={handleOpenAddressSelectLayer}>
+            회수지 변경
+          </button>
+        </div>
+
+        {selectedPickupAddress ? (
+          <div className={styles.returnPickupCard}>
+            <div className={styles.returnPickupTitleRow}>
+              <strong className={styles.returnPickupAlias}>{selectedPickupAddress.addressNm || "회수지"}</strong>
+              {selectedPickupAddress.defaultYn === "Y" ? (
+                <span className={styles.returnPickupBadge}>기본 회수지</span>
+              ) : null}
+            </div>
+            <p className={styles.returnPickupMeta}>{formatPickupContactLine(selectedPickupAddress)}</p>
+            <p className={styles.returnPickupMain}>{formatPickupAddressLine(selectedPickupAddress)}</p>
+            <p className={styles.returnPickupDetail}>{selectedPickupAddress.detailAddress || "-"}</p>
+          </div>
+        ) : (
+          <div className={styles.returnPickupEmptyState}>
+            <p className={styles.returnPickupEmptyTitle}>회수지를 선택해주세요.</p>
+            <button type="button" className={styles.returnPickupSelectButton} onClick={handleOpenAddressSelectLayer}>
+              회수지 선택
+            </button>
+            {addressList.length > 0 ? (
+              <p className={styles.returnPickupHint}>등록된 배송지 목록에서 회수지를 선택할 수 있습니다.</p>
+            ) : null}
+          </div>
+        )}
+      </section>
+
       <div className={styles.cancelActionBar}>
         {infoMessage !== "" ? <p className={styles.cancelValidationMessage}>{infoMessage}</p> : null}
         <div className={styles.cancelActionButtonGroup}>
@@ -391,6 +516,26 @@ export default function ShopMypageOrderReturnSection({
           </Link>
         </div>
       </div>
+
+      {showAddressSelectLayer ? (
+        <ShopOrderAddressSelectLayer
+          addressList={addressList}
+          selectedAddressNm={selectedPickupAddress?.addressNm ?? ""}
+          onSelect={handleSelectPickupAddress}
+          onEdit={handleOpenAddressEditLayer}
+          onOpenRegister={handleOpenAddressRegisterLayer}
+          onClose={handleCloseAddressSelectLayer}
+        />
+      ) : null}
+
+      {showAddressRegisterLayer ? (
+        <ShopOrderAddressRegisterLayer
+          mode={addressRegisterMode}
+          initialAddress={editingAddress}
+          onSuccess={handleAddressRegisterSuccess}
+          onClose={handleCloseAddressRegisterLayer}
+        />
+      ) : null}
     </section>
   );
 }

@@ -25,6 +25,7 @@ interface ShopOrderAddressRegisterLayerProps {
   initialAddress?: ShopOrderAddress | null;
   onSuccess: (result: ShopOrderAddressSaveResponse) => void;
   onClose: () => void;
+  addressLabel?: string;
 }
 
 const SEARCH_CURRENT_PAGE = 1;
@@ -82,6 +83,7 @@ function resolvePageNumberList(currentPage: number, totalPageCount: number): num
 // 배송지 등록 입력값의 클라이언트 유효성을 확인합니다.
 function resolveRegisterValidationMessage(
   selectedAddress: ShopOrderAddressSearchItem | null,
+  addressLabel: string,
   addressNm: string,
   rsvNm: string,
   phoneNumber: string,
@@ -91,10 +93,10 @@ function resolveRegisterValidationMessage(
     return "검색한 주소를 선택해주세요.";
   }
   if (addressNm.trim() === "") {
-    return "배송지명을 입력해주세요.";
+    return `${addressLabel}명을 입력해주세요.`;
   }
   if (addressNm.trim().length > 50) {
-    return "배송지명은 50자 이내로 입력해주세요.";
+    return `${addressLabel}명은 50자 이내로 입력해주세요.`;
   }
   if (rsvNm.trim() === "") {
     return "받는 사람을 입력해주세요.";
@@ -120,6 +122,7 @@ export default function ShopOrderAddressRegisterLayer({
   initialAddress = null,
   onSuccess,
   onClose,
+  addressLabel = "주소지",
 }: ShopOrderAddressRegisterLayerProps) {
   const initialSearchItem = createSearchItemFromAddress(initialAddress);
   const [keyword, setKeyword] = useState("");
@@ -193,7 +196,7 @@ export default function ShopOrderAddressRegisterLayer({
 
       // 실패 응답이면 서버 메시지를 우선 노출합니다.
       if (!result.ok || !result.data) {
-        setSearchErrorMessage(result.message || "배송지 검색에 실패했습니다.");
+        setSearchErrorMessage(result.message || `${addressLabel} 검색에 실패했습니다.`);
         setSearchResponse(createDefaultShopOrderAddressSearchResponse());
         return;
       }
@@ -203,11 +206,11 @@ export default function ShopOrderAddressRegisterLayer({
       setSearchResponse(normalizedResponse);
       setCurrentPage(normalizedResponse.common.currentPage > 0 ? normalizedResponse.common.currentPage : targetPage);
       if (normalizedResponse.common.errorCode !== "" && normalizedResponse.common.errorCode !== "0") {
-        setSearchErrorMessage(normalizedResponse.common.errorMessage || "배송지 검색 결과를 확인해주세요.");
+        setSearchErrorMessage(normalizedResponse.common.errorMessage || `${addressLabel} 검색 결과를 확인해주세요.`);
       }
     } catch {
       // 네트워크 오류 시 공통 실패 문구를 노출합니다.
-      setSearchErrorMessage("배송지 검색에 실패했습니다.");
+      setSearchErrorMessage(`${addressLabel} 검색에 실패했습니다.`);
       setSearchResponse(createDefaultShopOrderAddressSearchResponse());
     } finally {
       // 검색 완료 후 로딩 상태를 해제합니다.
@@ -244,7 +247,14 @@ export default function ShopOrderAddressRegisterLayer({
   // 배송지 등록/수정 API를 호출해 최신 배송지 목록을 반영합니다.
   const handleRegisterSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    const validationMessage = resolveRegisterValidationMessage(selectedSearchItem, addressNm, rsvNm, phoneNumber, detailAddress);
+    const validationMessage = resolveRegisterValidationMessage(
+      selectedSearchItem,
+      addressLabel,
+      addressNm,
+      rsvNm,
+      phoneNumber,
+      detailAddress,
+    );
     if (validationMessage !== "") {
       setSubmitErrorMessage(validationMessage);
       return;
@@ -282,7 +292,9 @@ export default function ShopOrderAddressRegisterLayer({
 
       // 실패 응답이면 서버 메시지를 등록 에러로 노출합니다.
       if (!result.ok || !result.data) {
-        setSubmitErrorMessage(result.message || (isEditMode ? "배송지 수정에 실패했습니다." : "배송지 등록에 실패했습니다."));
+        setSubmitErrorMessage(
+          result.message || (isEditMode ? `${addressLabel} 수정에 실패했습니다.` : `${addressLabel} 등록에 실패했습니다.`),
+        );
         return;
       }
 
@@ -295,7 +307,7 @@ export default function ShopOrderAddressRegisterLayer({
       onSuccess(safeResponse);
     } catch {
       // 네트워크 오류 시 공통 실패 문구를 노출합니다.
-      setSubmitErrorMessage(isEditMode ? "배송지 수정에 실패했습니다." : "배송지 등록에 실패했습니다.");
+      setSubmitErrorMessage(isEditMode ? `${addressLabel} 수정에 실패했습니다.` : `${addressLabel} 등록에 실패했습니다.`);
     } finally {
       // 저장 완료 후 로딩 상태를 해제합니다.
       setIsSubmitting(false);
@@ -303,18 +315,29 @@ export default function ShopOrderAddressRegisterLayer({
   };
 
   return (
-    <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={isEditMode ? "배송지 수정" : "배송지 등록"} onClick={handleOverlayClick}>
+    <div
+      className={styles.overlay}
+      role="dialog"
+      aria-modal="true"
+      aria-label={isEditMode ? `${addressLabel} 수정` : `${addressLabel} 등록`}
+      onClick={handleOverlayClick}
+    >
       <div className={styles.panel}>
         <div className={styles.header}>
           <div className={styles.headerActionRow}>
-            <h2 className={styles.headerTitle}>{isEditMode ? "배송지 수정" : "배송지 등록"}</h2>
+            <h2 className={styles.headerTitle}>{isEditMode ? `${addressLabel} 수정` : `${addressLabel} 등록`}</h2>
             <div className={styles.headerButtonGroup}>
               {selectedSearchItem ? (
                 <button type="button" className={styles.headerActionButton} onClick={handleBackToSearch}>
                   검색 결과로 돌아가기
                 </button>
               ) : null}
-              <button type="button" className={styles.closeButton} aria-label="배송지 등록 팝업 닫기" onClick={onClose}>
+              <button
+                type="button"
+                className={styles.closeButton}
+                aria-label={`${addressLabel} 등록 팝업 닫기`}
+                onClick={onClose}
+              >
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
             </div>
@@ -449,7 +472,7 @@ export default function ShopOrderAddressRegisterLayer({
 
               <div className={styles.formGrid}>
                 <label className={styles.fieldLabel}>
-                  <span>배송지명</span>
+                  <span>{addressLabel}명</span>
                   <input
                     type="text"
                     className={styles.textInput}
@@ -514,7 +537,7 @@ export default function ShopOrderAddressRegisterLayer({
 
               <label className={styles.checkboxLabel}>
                 <input type="checkbox" checked={saveAsDefault} onChange={(event) => setSaveAsDefault(event.target.checked)} />
-                <span>기본 배송지로 저장</span>
+                <span>기본 {addressLabel}로 저장</span>
               </label>
 
               {submitErrorMessage !== "" ? <p className={styles.errorText}>{submitErrorMessage}</p> : null}
@@ -539,7 +562,7 @@ export default function ShopOrderAddressRegisterLayer({
                 className={`${styles.primaryButton} ${styles.footerButton}`}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? (isEditMode ? "수정 중..." : "등록 중...") : isEditMode ? "배송지 수정" : "배송지 저장"}
+                {isSubmitting ? (isEditMode ? "수정 중..." : "등록 중...") : isEditMode ? `${addressLabel} 수정` : `${addressLabel} 저장`}
               </button>
             </div>
           </div>

@@ -119,6 +119,8 @@ export interface ShopMypageOrderReturnPageResponse {
   amountSummary: ShopMypageOrderAmountSummary;
   reasonList: ShopMypageOrderReturnReasonItem[];
   siteInfo: ShopMypageOrderCancelSiteInfo;
+  addressList: ShopOrderAddress[];
+  pickupAddress: ShopOrderAddress | null;
 }
 
 // 마이페이지 주문취소 제출용 미리보기 금액 타입입니다.
@@ -299,3 +301,4 @@ export interface ShopMypagePointPageResponse {
   /** 전체 페이지 수 */
   totalPageCount: number;
 }
+import type { ShopOrderAddress } from "@/domains/order/types";
