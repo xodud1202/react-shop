@@ -15,11 +15,11 @@ import {
   formatShopMypageOrderDateLabel,
   formatShopMypageOrderPrice,
   isShopMypageOrderStatusActionLabel,
-  resolveShopMypageOrderActionLabelList,
   resolveShopMypageOrderActionHref,
   resolveShopMypageOrderDetailAmount,
   resolveShopMypageOrderStatusActionPath,
   resolveShopMypageOrderStatusActionSuccessMessage,
+  resolveShopMypageOrderVisibleActionLabelList,
 } from "@/domains/mypage/utils/shopMypageOrder";
 import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import styles from "./ShopMypageOrderSection.module.css";
@@ -103,7 +103,7 @@ export default function ShopMypageOrderCardList({
 
           <ul className={styles.detailList}>
             {orderGroup.detailList.map((detailItem) => {
-              const actionLabelList = resolveShopMypageOrderActionLabelList(detailItem.ordDtlStatCd);
+              const actionLabelList = resolveShopMypageOrderVisibleActionLabelList(detailItem);
               return (
                 <li key={`${detailItem.ordNo}-${detailItem.ordDtlNo}`} className={styles.detailRow}>
                   <div className={styles.thumbnailWrap}>

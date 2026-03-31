@@ -14,6 +14,7 @@ import type {
   ShopMypageOrderDetailPageResponse,
   ShopMypageOrderGroup,
   ShopMypageOrderPageResponse,
+  ShopMypageOrderReturnPageResponse,
   ShopMypageOrderStatusSummary,
   ShopMypageOwnedCouponItem,
   ShopMypageWishPageResponse,
@@ -129,6 +130,21 @@ function normalizeNullableString(value: unknown): string | null {
   return trimmedValue === "" ? null : trimmedValue;
 }
 
+// 불리언 값을 안전하게 보정합니다.
+function normalizeBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "number") {
+    return value === 1;
+  }
+  if (typeof value === "string") {
+    const normalizedValue = value.trim().toLowerCase();
+    return normalizedValue === "true" || normalizedValue === "1" || normalizedValue === "y";
+  }
+  return false;
+}
+
 // 문자열 값을 빈 문자열 기본값으로 보정합니다.
 function normalizeString(value: unknown): string {
   return normalizeNullableString(value) ?? "";
@@ -142,6 +158,7 @@ function normalizeShopMypageOrderDetailItem(rawItem: unknown): ShopMypageOrderDe
     ordDtlNo: normalizeNonNegativeNumber(source.ordDtlNo),
     ordDtlStatCd: normalizeString(source.ordDtlStatCd),
     ordDtlStatNm: normalizeString(source.ordDtlStatNm),
+    returnApplyableYn: normalizeBoolean(source.returnApplyableYn),
     goodsId: normalizeString(source.goodsId),
     goodsNm: normalizeString(source.goodsNm),
     sizeId: normalizeString(source.sizeId),
@@ -335,6 +352,16 @@ function buildShopMypageOrderCancelPagePath(ordNo: string, ordDtlNo?: number): s
   return `/api/shop/mypage/order/cancel/page?${queryParams.toString()}`;
 }
 
+// 마이페이지 반품 신청 화면 API 경로를 생성합니다.
+function buildShopMypageOrderReturnPagePath(ordNo: string, ordDtlNo?: number): string {
+  const queryParams = new URLSearchParams();
+  queryParams.set("ordNo", normalizeString(ordNo));
+  if (typeof ordDtlNo === "number" && Number.isFinite(ordDtlNo) && ordDtlNo > 0) {
+    queryParams.set("ordDtlNo", String(Math.floor(ordDtlNo)));
+  }
+  return `/api/shop/mypage/order/return/page?${queryParams.toString()}`;
+}
+
 // 마이페이지 개별 쿠폰 다운로드 API 경로를 반환합니다.
 export function getShopMypageCouponDownloadPath(): string {
   return "/api/shop/mypage/coupon/download";
@@ -526,6 +553,41 @@ export async function fetchShopMypageOrderCancelPageServerData(
   const path = buildShopMypageOrderCancelPagePath(ordNo, ordDtlNo);
   const requestInit = buildRequestInitFromCookie(cookieHeader);
   const response = await readShopServerApiResponse<ShopMypageOrderCancelPageResponse>(path, requestInit);
+  const defaultAmountSummary = createDefaultShopMypageOrderAmountSummary();
+  const defaultSiteInfo = createDefaultShopMypageOrderCancelSiteInfo();
+
+  // 응답이 없거나 주문번호가 유효하지 않으면 null을 반환합니다.
+  if (!response) {
+    return null;
+  }
+
+  const normalizedOrder = response.order ? normalizeShopMypageOrderGroup(response.order) : null;
+  if (!normalizedOrder || normalizedOrder.ordNo.trim() === "") {
+    return null;
+  }
+
+  return {
+    order: normalizedOrder,
+    amountSummary: response.amountSummary
+      ? normalizeShopMypageOrderAmountSummary(response.amountSummary)
+      : defaultAmountSummary,
+    reasonList: Array.isArray(response.reasonList)
+      ? response.reasonList.map((item) => normalizeShopMypageOrderCancelReasonItem(item))
+      : [],
+    siteInfo: response.siteInfo ? normalizeShopMypageOrderCancelSiteInfo(response.siteInfo) : defaultSiteInfo,
+  };
+}
+
+// 마이페이지 반품 신청 화면 SSR 데이터를 조회합니다.
+export async function fetchShopMypageOrderReturnPageServerData(
+  ordNo: string,
+  ordDtlNo: number | undefined,
+  cookieHeader: string,
+): Promise<ShopMypageOrderReturnPageResponse | null> {
+  // 반품 신청 화면 API 경로를 생성해 응답을 조회합니다.
+  const path = buildShopMypageOrderReturnPagePath(ordNo, ordDtlNo);
+  const requestInit = buildRequestInitFromCookie(cookieHeader);
+  const response = await readShopServerApiResponse<ShopMypageOrderReturnPageResponse>(path, requestInit);
   const defaultAmountSummary = createDefaultShopMypageOrderAmountSummary();
   const defaultSiteInfo = createDefaultShopMypageOrderCancelSiteInfo();
 

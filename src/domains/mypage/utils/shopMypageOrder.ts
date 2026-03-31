@@ -67,6 +67,14 @@ export function buildShopMypageOrderCancelHref(ordNo: string, ordDtlNo: number):
   return `/mypage/order/${encodeURIComponent(normalizedOrdNo)}/cancel?${queryParams.toString()}`;
 }
 
+// 주문번호/주문상세번호 기준 반품신청 화면 링크를 생성합니다.
+export function buildShopMypageOrderReturnHref(ordNo: string, ordDtlNo: number): string {
+  const normalizedOrdNo = ordNo.trim();
+  const queryParams = new URLSearchParams();
+  queryParams.set("ordDtlNo", String(Math.max(Math.floor(ordDtlNo), 1)));
+  return `/mypage/order/${encodeURIComponent(normalizedOrdNo)}/return?${queryParams.toString()}`;
+}
+
 // 주문상세 상태코드 기준 우측 액션 버튼 목록을 반환합니다.
 export function resolveShopMypageOrderActionLabelList(ordDtlStatCd: string): string[] {
   if (ordDtlStatCd === "ORD_DTL_STAT_01" || ordDtlStatCd === "ORD_DTL_STAT_02") {
@@ -96,7 +104,20 @@ export function resolveShopMypageOrderActionHref(
   if (actionLabel === "주문 취소") {
     return buildShopMypageOrderCancelHref(ordNo, ordDtlNo);
   }
+  if (actionLabel === "반품신청") {
+    return buildShopMypageOrderReturnHref(ordNo, ordDtlNo);
+  }
   return null;
+}
+
+// 주문상세 행 기준 실제 노출할 액션 버튼 목록을 반환합니다.
+export function resolveShopMypageOrderVisibleActionLabelList(detailItem: ShopMypageOrderDetailItem): string[] {
+  return resolveShopMypageOrderActionLabelList(detailItem.ordDtlStatCd).filter((actionLabel) => {
+    if (actionLabel === "반품신청") {
+      return detailItem.returnApplyableYn;
+    }
+    return true;
+  });
 }
 
 // 주문 액션 라벨이 주문상태 변경 API 호출 대상인지 반환합니다.

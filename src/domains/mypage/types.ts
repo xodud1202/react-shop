@@ -23,6 +23,7 @@ export interface ShopMypageOrderDetailItem {
   ordDtlNo: number;
   ordDtlStatCd: string;
   ordDtlStatNm: string;
+  returnApplyableYn: boolean;
   goodsId: string;
   goodsNm: string;
   sizeId: string;
@@ -106,6 +107,17 @@ export interface ShopMypageOrderCancelPageResponse {
   order: ShopMypageOrderGroup | null;
   amountSummary: ShopMypageOrderAmountSummary;
   reasonList: ShopMypageOrderCancelReasonItem[];
+  siteInfo: ShopMypageOrderCancelSiteInfo;
+}
+
+// 마이페이지 반품 사유 코드 아이템 타입입니다.
+export type ShopMypageOrderReturnReasonItem = ShopMypageOrderCancelReasonItem;
+
+// 마이페이지 반품 신청 화면 응답 타입입니다.
+export interface ShopMypageOrderReturnPageResponse {
+  order: ShopMypageOrderGroup | null;
+  amountSummary: ShopMypageOrderAmountSummary;
+  reasonList: ShopMypageOrderReturnReasonItem[];
   siteInfo: ShopMypageOrderCancelSiteInfo;
 }
 
