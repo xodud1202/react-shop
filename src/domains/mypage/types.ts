@@ -144,6 +144,20 @@ export interface ShopMypageOrderCancelSubmitResponse {
   restoredPointAmt: number;
 }
 
+// 마이페이지 주문상태 변경 요청 타입입니다.
+export interface ShopMypageOrderStatusActionRequest {
+  ordNo: string;
+  ordDtlNo: number;
+}
+
+// 마이페이지 주문상태 변경 응답 타입입니다.
+export interface ShopMypageOrderStatusActionResponse {
+  ordNo: string;
+  ordDtlNo: number;
+  ordDtlStatCd: string;
+  updatedCount: number;
+}
+
 // 마이페이지 취소내역 상품 상세 아이템 타입입니다.
 export interface ShopMypageCancelHistoryDetailItem {
   clmNo: string;

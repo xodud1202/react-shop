@@ -323,6 +323,11 @@
   cursor: pointer;
 }
 
+.actionButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .noActionLabel {
   display: inline-flex;
   align-items: center;

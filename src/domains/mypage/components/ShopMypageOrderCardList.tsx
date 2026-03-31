@@ -1,17 +1,27 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import type { ShopMypageOrderGroup } from "@/domains/mypage/types";
+import { useRouter } from "next/navigation";
+import type {
+  ShopMypageOrderGroup,
+  ShopMypageOrderStatusActionRequest,
+  ShopMypageOrderStatusActionResponse,
+} from "@/domains/mypage/types";
 import {
   buildShopMypageOrderDetailHref,
   formatShopMypageOrderCount,
   formatShopMypageOrderDateLabel,
   formatShopMypageOrderPrice,
+  isShopMypageOrderStatusActionLabel,
   resolveShopMypageOrderActionLabelList,
   resolveShopMypageOrderActionHref,
   resolveShopMypageOrderDetailAmount,
+  resolveShopMypageOrderStatusActionPath,
+  resolveShopMypageOrderStatusActionSuccessMessage,
 } from "@/domains/mypage/utils/shopMypageOrder";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import styles from "./ShopMypageOrderSection.module.css";
 
 interface ShopMypageOrderCardListProps {
@@ -31,10 +41,48 @@ export default function ShopMypageOrderCardList({
   emptyMessage = "조회된 주문내역이 없습니다.",
   enableOrderDetailLink = true,
 }: ShopMypageOrderCardListProps) {
+  const router = useRouter();
+  const [processingActionKey, setProcessingActionKey] = useState<string>("");
+
   // 빈 주문 목록이면 공통 empty 상태를 반환합니다.
   if (orderList.length === 0) {
     return <div className={styles.emptyState}>{emptyMessage}</div>;
   }
+
+  // 주문상태 변경 액션을 호출하고 현재 화면 데이터를 새로고침합니다.
+  const handleStatusAction = async (ordNo: string, ordDtlNo: number, actionLabel: string): Promise<void> => {
+    const actionPath = resolveShopMypageOrderStatusActionPath(actionLabel);
+    if (!actionPath) {
+      showPreparingAlert();
+      return;
+    }
+
+    const requestBody: ShopMypageOrderStatusActionRequest = {
+      ordNo,
+      ordDtlNo,
+    };
+    const actionKey = `${ordNo}-${ordDtlNo}-${actionLabel}`;
+
+    // 동일 액션 중복 클릭을 막고 서버 검증 결과를 사용자에게 즉시 노출합니다.
+    setProcessingActionKey(actionKey);
+    try {
+      const result = await requestShopClientApi<ShopMypageOrderStatusActionResponse>(actionPath, {
+        method: "POST",
+        body: requestBody,
+      });
+      if (!result.ok || !result.data) {
+        window.alert(result.message || `${actionLabel} 처리에 실패했습니다.`);
+        return;
+      }
+
+      window.alert(resolveShopMypageOrderStatusActionSuccessMessage(actionLabel));
+      router.refresh();
+    } catch {
+      window.alert(`${actionLabel} 처리에 실패했습니다.`);
+    } finally {
+      setProcessingActionKey("");
+    }
+  };
 
   return (
     <div className={styles.orderList}>
@@ -103,6 +151,8 @@ export default function ShopMypageOrderCardList({
                   <div className={styles.actionArea}>
                     {actionLabelList.length > 0 ? (
                       actionLabelList.map((actionLabel) => {
+                        const actionKey = `${detailItem.ordNo}-${detailItem.ordDtlNo}-${actionLabel}`;
+                        const isProcessingAction = processingActionKey === actionKey;
                         const actionHref = resolveShopMypageOrderActionHref(
                           detailItem.ordNo,
                           detailItem.ordDtlNo,
@@ -119,9 +169,24 @@ export default function ShopMypageOrderCardList({
                             </Link>
                           );
                         }
+                        if (isShopMypageOrderStatusActionLabel(actionLabel)) {
+                          return (
+                            <button
+                              key={actionKey}
+                              type="button"
+                              className={styles.actionButton}
+                              disabled={processingActionKey !== ""}
+                              onClick={() => {
+                                void handleStatusAction(detailItem.ordNo, detailItem.ordDtlNo, actionLabel);
+                              }}
+                            >
+                              {isProcessingAction ? `${actionLabel} 처리중...` : actionLabel}
+                            </button>
+                          );
+                        }
                         return (
                           <button
-                            key={`${detailItem.ordNo}-${detailItem.ordDtlNo}-${actionLabel}`}
+                            key={actionKey}
                             type="button"
                             className={styles.actionButton}
                             onClick={showPreparingAlert}

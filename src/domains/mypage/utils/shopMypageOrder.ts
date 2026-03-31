@@ -14,6 +14,9 @@ export interface ShopMypageOrderPolicyItem {
   description: string;
 }
 
+const SHOP_MYPAGE_ORDER_ACTION_DELIVERY_COMPLETE = "배송완료";
+const SHOP_MYPAGE_ORDER_ACTION_PURCHASE_CONFIRM = "구매확정";
+
 // 주문 금액 숫자를 천 단위 콤마 문자열로 변환합니다.
 export function formatShopMypageOrderPrice(value: number): string {
   const safeValue = Number.isFinite(value) ? Math.max(Math.floor(value), 0) : 0;
@@ -94,6 +97,36 @@ export function resolveShopMypageOrderActionHref(
     return buildShopMypageOrderCancelHref(ordNo, ordDtlNo);
   }
   return null;
+}
+
+// 주문 액션 라벨이 주문상태 변경 API 호출 대상인지 반환합니다.
+export function isShopMypageOrderStatusActionLabel(actionLabel: string): boolean {
+  return (
+    actionLabel === SHOP_MYPAGE_ORDER_ACTION_DELIVERY_COMPLETE ||
+    actionLabel === SHOP_MYPAGE_ORDER_ACTION_PURCHASE_CONFIRM
+  );
+}
+
+// 주문 액션 라벨에 맞는 주문상태 변경 API 경로를 반환합니다.
+export function resolveShopMypageOrderStatusActionPath(actionLabel: string): string | null {
+  if (actionLabel === SHOP_MYPAGE_ORDER_ACTION_DELIVERY_COMPLETE) {
+    return "/api/shop/mypage/order/delivery/complete";
+  }
+  if (actionLabel === SHOP_MYPAGE_ORDER_ACTION_PURCHASE_CONFIRM) {
+    return "/api/shop/mypage/order/purchase/confirm";
+  }
+  return null;
+}
+
+// 주문 액션 라벨에 맞는 성공 안내 문구를 반환합니다.
+export function resolveShopMypageOrderStatusActionSuccessMessage(actionLabel: string): string {
+  if (actionLabel === SHOP_MYPAGE_ORDER_ACTION_DELIVERY_COMPLETE) {
+    return "배송완료 처리되었습니다.";
+  }
+  if (actionLabel === SHOP_MYPAGE_ORDER_ACTION_PURCHASE_CONFIRM) {
+    return "구매확정 처리되었습니다.";
+  }
+  return "처리되었습니다.";
 }
 
 // 상태 요약 응답을 카드 렌더링용 목록으로 변환합니다.
