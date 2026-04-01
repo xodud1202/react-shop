@@ -1,3 +1,5 @@
+import type { ShopOrderAddress } from "@/domains/order/types";
+
 // 마이페이지 위시리스트 상품 아이템 타입입니다.
 export interface ShopMypageWishGoodsItem {
   custNo: number;
@@ -113,12 +115,31 @@ export interface ShopMypageOrderCancelPageResponse {
 // 마이페이지 반품 사유 코드 아이템 타입입니다.
 export type ShopMypageOrderReturnReasonItem = ShopMypageOrderCancelReasonItem;
 
+// 마이페이지 상품별 클레임 사유 상태 타입입니다.
+export interface ShopMypageOrderItemReasonState {
+  reasonCd: string;
+  reasonDetail: string;
+}
+
+// 마이페이지 상품별 클레임 사유 상태 맵 타입입니다.
+export type ShopMypageOrderItemReasonMap = Record<number, ShopMypageOrderItemReasonState>;
+
+// 마이페이지 반품 배송비 계산 컨텍스트 타입입니다.
+export interface ShopMypageOrderReturnFeeContext {
+  originalPaidDeliveryAmt: number;
+  originalFreeDeliveryYn: boolean;
+  hasPriorCompanyFaultReturnOrExchange: boolean;
+  hasPriorCustomerFaultReturnDeduction: boolean;
+  currentRemainingFinalPayAmt: number;
+}
+
 // 마이페이지 반품 신청 화면 응답 타입입니다.
 export interface ShopMypageOrderReturnPageResponse {
   order: ShopMypageOrderGroup | null;
   amountSummary: ShopMypageOrderAmountSummary;
   reasonList: ShopMypageOrderReturnReasonItem[];
   siteInfo: ShopMypageOrderCancelSiteInfo;
+  returnFeeContext: ShopMypageOrderReturnFeeContext;
   addressList: ShopOrderAddress[];
   pickupAddress: ShopOrderAddress | null;
 }
@@ -137,13 +158,13 @@ export interface ShopMypageOrderCancelPreviewAmount {
 export interface ShopMypageOrderCancelSubmitItem {
   ordDtlNo: number;
   cancelQty: number;
+  reasonCd: string;
+  reasonDetail: string;
 }
 
 // 마이페이지 주문취소 제출 요청 타입입니다.
 export interface ShopMypageOrderCancelSubmitRequest {
   ordNo: string;
-  reasonCd: string;
-  reasonDetail: string;
   cancelItemList: ShopMypageOrderCancelSubmitItem[];
   previewAmount: ShopMypageOrderCancelPreviewAmount;
 }
@@ -301,4 +322,3 @@ export interface ShopMypagePointPageResponse {
   /** 전체 페이지 수 */
   totalPageCount: number;
 }
-import type { ShopOrderAddress } from "@/domains/order/types";

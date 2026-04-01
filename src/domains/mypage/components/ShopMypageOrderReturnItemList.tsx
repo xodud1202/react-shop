@@ -1,7 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import type { ShopMypageOrderDetailItem, ShopMypageOrderGroup } from "@/domains/mypage/types";
+import ShopMypageOrderClaimReasonFields from "@/domains/mypage/components/ShopMypageOrderClaimReasonFields";
+import type {
+  ShopMypageOrderDetailItem,
+  ShopMypageOrderGroup,
+  ShopMypageOrderItemReasonMap,
+  ShopMypageOrderReturnReasonItem,
+} from "@/domains/mypage/types";
+import { resolveShopMypageOrderItemReasonState } from "@/domains/mypage/utils/shopMypageOrderClaimReason";
 import {
   formatShopMypageOrderCount,
   formatShopMypageOrderPrice,
@@ -18,10 +25,14 @@ import styles from "./ShopMypageOrderSection.module.css";
 interface ShopMypageOrderReturnItemListProps {
   order: ShopMypageOrderGroup;
   selectionMap: ShopMypageOrderReturnSelectionMap;
+  itemReasonMap: ShopMypageOrderItemReasonMap;
+  reasonList: ShopMypageOrderReturnReasonItem[];
   allSelected: boolean;
   onToggleAll: (checked: boolean) => void;
   onToggleItem: (detailItem: ShopMypageOrderDetailItem, checked: boolean) => void;
   onChangeItemQty: (detailItem: ShopMypageOrderDetailItem, nextQty: number) => void;
+  onChangeItemReasonCd: (ordDtlNo: number, nextReasonCd: string) => void;
+  onChangeItemReasonDetail: (ordDtlNo: number, nextReasonDetail: string) => void;
 }
 
 // 반품 신청 리스트 상단 안내 문구를 반환합니다.
@@ -33,10 +44,14 @@ function resolveShopMypageOrderReturnGuideMessage(): string {
 export default function ShopMypageOrderReturnItemList({
   order,
   selectionMap,
+  itemReasonMap,
+  reasonList,
   allSelected,
   onToggleAll,
   onToggleItem,
   onChangeItemQty,
+  onChangeItemReasonCd,
+  onChangeItemReasonDetail,
 }: ShopMypageOrderReturnItemListProps) {
   return (
     <section className={styles.detailSectionBlock}>
@@ -61,12 +76,16 @@ export default function ShopMypageOrderReturnItemList({
         <ul className={styles.detailList}>
           {order.detailList.map((detailItem) => {
             const selectionItem = resolveShopMypageOrderReturnSelectionItem(selectionMap, detailItem);
+            const reasonState = resolveShopMypageOrderItemReasonState(itemReasonMap, detailItem.ordDtlNo);
             const currentRemainingQty = Math.max(Math.floor(detailItem.cancelableQty || 0), 0);
             const selectable = isShopMypageOrderReturnable(detailItem);
             const quantityEditable = selectable && selectionItem.selected;
 
             return (
-              <li key={`${detailItem.ordNo}-${detailItem.ordDtlNo}`} className={styles.detailRow}>
+              <li
+                key={`${detailItem.ordNo}-${detailItem.ordDtlNo}`}
+                className={`${styles.detailRow} ${styles.returnDetailRow}`}
+              >
                 <div className={styles.thumbnailWrap}>
                   {detailItem.imgUrl.trim() !== "" ? (
                     <Image
@@ -121,51 +140,78 @@ export default function ShopMypageOrderReturnItemList({
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className={styles.cancelControlArea}>
-                  <div className={styles.cancelQtySummary}>
-                    <span className={styles.cancelQtyLabel}>반품가능수량</span>
-                    <span className={styles.cancelQtyValue}>{formatShopMypageOrderCount(currentRemainingQty)}개</span>
+                  <div className={styles.returnControlArea}>
+                    <div className={styles.returnControlTopRow}>
+                      <div className={styles.cancelQtySummary}>
+                        <span className={styles.cancelQtyLabel}>반품가능수량</span>
+                        <span className={styles.cancelQtyValue}>{formatShopMypageOrderCount(currentRemainingQty)}개</span>
+                      </div>
+                      <div className={styles.returnQtyEditorWrap}>
+                        <div className={styles.cancelQtyEditor}>
+                          <button
+                            type="button"
+                            className={styles.cancelQtyButton}
+                            disabled={!quantityEditable || selectionItem.cancelQty <= 1}
+                            onClick={() => {
+                              onChangeItemQty(detailItem, selectionItem.cancelQty - 1);
+                            }}
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min={1}
+                            max={Math.max(currentRemainingQty, 1)}
+                            value={quantityEditable ? selectionItem.cancelQty : 0}
+                            disabled={!quantityEditable}
+                            className={styles.cancelQtyInput}
+                            onChange={(event) => {
+                              onChangeItemQty(
+                                detailItem,
+                                clampShopMypageOrderReturnQty(detailItem, Number(event.target.value)),
+                              );
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className={styles.cancelQtyButton}
+                            disabled={!quantityEditable || selectionItem.cancelQty >= currentRemainingQty}
+                            onClick={() => {
+                              onChangeItemQty(detailItem, selectionItem.cancelQty + 1);
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    {selectable ? (
+                      <p className={styles.cancelControlHint}>반품할 상품만 선택하고 수량을 조정해주세요.</p>
+                    ) : (
+                      <p className={styles.cancelControlHint}>현재 상태에서는 반품 신청이 불가합니다.</p>
+                    )}
                   </div>
-                  <div className={styles.cancelQtyEditor}>
-                    <button
-                      type="button"
-                      className={styles.cancelQtyButton}
-                      disabled={!quantityEditable || selectionItem.cancelQty <= 1}
-                      onClick={() => {
-                        onChangeItemQty(detailItem, selectionItem.cancelQty - 1);
-                      }}
-                    >
-                      -
-                    </button>
-                    <input
-                      type="number"
-                      min={1}
-                      max={Math.max(currentRemainingQty, 1)}
-                      value={quantityEditable ? selectionItem.cancelQty : 0}
-                      disabled={!quantityEditable}
-                      className={styles.cancelQtyInput}
-                      onChange={(event) => {
-                        onChangeItemQty(detailItem, clampShopMypageOrderReturnQty(detailItem, Number(event.target.value)));
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className={styles.cancelQtyButton}
-                      disabled={!quantityEditable || selectionItem.cancelQty >= currentRemainingQty}
-                      onClick={() => {
-                        onChangeItemQty(detailItem, selectionItem.cancelQty + 1);
-                      }}
-                    >
-                      +
-                    </button>
-                  </div>
-                  {selectable ? (
-                    <p className={styles.cancelControlHint}>반품할 상품만 선택하고 수량을 조정해주세요.</p>
-                  ) : (
-                    <p className={styles.cancelControlHint}>현재 상태에서는 반품 신청이 불가합니다.</p>
-                  )}
+
+                  <ShopMypageOrderClaimReasonFields
+                    title=""
+                    reasonLabel="반품 사유"
+                    showReasonLabel={false}
+                    showDetailLabel={false}
+                    requiredText=""
+                    layout="stack"
+                    variant="plain"
+                    textareaPlaceholder="상세 사유를 입력해주세요."
+                    reasonList={reasonList}
+                    reasonState={reasonState}
+                    disabled={!selectionItem.selected}
+                    onChangeReasonCd={(nextReasonCd) => {
+                      onChangeItemReasonCd(detailItem.ordDtlNo, nextReasonCd);
+                    }}
+                    onChangeReasonDetail={(nextReasonDetail) => {
+                      onChangeItemReasonDetail(detailItem.ordDtlNo, nextReasonDetail);
+                    }}
+                  />
                 </div>
               </li>
             );

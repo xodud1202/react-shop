@@ -15,6 +15,7 @@ import type {
   ShopMypageOrderGroup,
   ShopMypageOrderPageResponse,
   ShopMypageOrderReturnPageResponse,
+  ShopMypageOrderReturnFeeContext,
   ShopMypageOrderStatusSummary,
   ShopMypageOwnedCouponItem,
   ShopMypageWishPageResponse,
@@ -100,6 +101,17 @@ function createDefaultShopMypageOrderCancelSiteInfo(): ShopMypageOrderCancelSite
     siteId: "",
     deliveryFee: 0,
     deliveryFeeLimit: 0,
+  };
+}
+
+// 마이페이지 반품 배송비 계산 컨텍스트 기본 응답값을 생성합니다.
+function createDefaultShopMypageOrderReturnFeeContext(): ShopMypageOrderReturnFeeContext {
+  return {
+    originalPaidDeliveryAmt: 0,
+    originalFreeDeliveryYn: false,
+    hasPriorCompanyFaultReturnOrExchange: false,
+    hasPriorCustomerFaultReturnDeduction: false,
+    currentRemainingFinalPayAmt: 0,
   };
 }
 
@@ -244,6 +256,18 @@ function normalizeShopMypageOrderCancelSiteInfo(rawValue: unknown): ShopMypageOr
     siteId: normalizeString(source.siteId),
     deliveryFee: normalizeNonNegativeNumber(source.deliveryFee),
     deliveryFeeLimit: normalizeNonNegativeNumber(source.deliveryFeeLimit),
+  };
+}
+
+// 반품 배송비 계산 컨텍스트 응답을 기본값과 함께 정규화합니다.
+function normalizeShopMypageOrderReturnFeeContext(rawValue: unknown): ShopMypageOrderReturnFeeContext {
+  const source = (rawValue ?? {}) as Partial<ShopMypageOrderReturnFeeContext>;
+  return {
+    originalPaidDeliveryAmt: normalizeNonNegativeNumber(source.originalPaidDeliveryAmt),
+    originalFreeDeliveryYn: normalizeBoolean(source.originalFreeDeliveryYn),
+    hasPriorCompanyFaultReturnOrExchange: normalizeBoolean(source.hasPriorCompanyFaultReturnOrExchange),
+    hasPriorCustomerFaultReturnDeduction: normalizeBoolean(source.hasPriorCustomerFaultReturnDeduction),
+    currentRemainingFinalPayAmt: normalizeNonNegativeNumber(source.currentRemainingFinalPayAmt),
   };
 }
 
@@ -591,6 +615,7 @@ export async function fetchShopMypageOrderReturnPageServerData(
   const response = await readShopServerApiResponse<ShopMypageOrderReturnPageResponse>(path, requestInit);
   const defaultAmountSummary = createDefaultShopMypageOrderAmountSummary();
   const defaultSiteInfo = createDefaultShopMypageOrderCancelSiteInfo();
+  const defaultReturnFeeContext = createDefaultShopMypageOrderReturnFeeContext();
 
   // 응답이 없거나 주문번호가 유효하지 않으면 null을 반환합니다.
   if (!response) {
@@ -611,6 +636,9 @@ export async function fetchShopMypageOrderReturnPageServerData(
       ? response.reasonList.map((item) => normalizeShopMypageOrderCancelReasonItem(item))
       : [],
     siteInfo: response.siteInfo ? normalizeShopMypageOrderCancelSiteInfo(response.siteInfo) : defaultSiteInfo,
+    returnFeeContext: response.returnFeeContext
+      ? normalizeShopMypageOrderReturnFeeContext(response.returnFeeContext)
+      : defaultReturnFeeContext,
     addressList: Array.isArray(response.addressList) ? response.addressList.map((item) => normalizeShopOrderAddress(item)) : [],
     pickupAddress:
       response.pickupAddress && typeof response.pickupAddress === "object"

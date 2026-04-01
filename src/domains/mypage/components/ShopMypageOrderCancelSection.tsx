@@ -6,10 +6,18 @@ import { useRouter } from "next/navigation";
 import type {
   ShopMypageOrderAmountSummary,
   ShopMypageOrderCancelPageResponse,
+  ShopMypageOrderCancelReasonItem,
+  ShopMypageOrderCancelSubmitItem,
   ShopMypageOrderCancelSubmitRequest,
   ShopMypageOrderCancelSubmitResponse,
   ShopMypageOrderDetailItem,
+  ShopMypageOrderItemReasonMap,
 } from "@/domains/mypage/types";
+import {
+  createInitialShopMypageOrderItemReasonMap,
+  resolveShopMypageOrderItemReasonState,
+  resolveShopMypageOrderItemReasonValidationMessage,
+} from "@/domains/mypage/utils/shopMypageOrderClaimReason";
 import { formatShopMypageOrderPrice } from "@/domains/mypage/utils/shopMypageOrder";
 import {
   buildShopMypageOrderCancelPreviewResult,
@@ -36,19 +44,45 @@ interface ShopMypageOrderCancelSectionProps {
 function buildShopMypageOrderCancelSubmitItemList(
   detailList: ShopMypageOrderDetailItem[],
   selectionMap: ShopMypageOrderCancelSelectionMap,
+  itemReasonMap: ShopMypageOrderItemReasonMap,
 ): ShopMypageOrderCancelSubmitRequest["cancelItemList"] {
   return detailList.flatMap((detailItem) => {
     const selectionItem = resolveShopMypageOrderCancelSelectionItem(selectionMap, detailItem);
     if (!selectionItem.selected || selectionItem.cancelQty < 1) {
       return [];
     }
+    const reasonState = resolveShopMypageOrderItemReasonState(itemReasonMap, detailItem.ordDtlNo);
     return [
       {
         ordDtlNo: detailItem.ordDtlNo,
         cancelQty: selectionItem.cancelQty,
+        reasonCd: reasonState.reasonCd.trim(),
+        reasonDetail: reasonState.reasonDetail.trim(),
       },
     ];
   });
+}
+
+// 선택된 주문상품의 주문상세번호 목록을 계산합니다.
+function buildShopMypageOrderSelectedOrdDtlNoList(
+  cancelItemList: ShopMypageOrderCancelSubmitItem[],
+): number[] {
+  return cancelItemList.map((cancelItem) => cancelItem.ordDtlNo);
+}
+
+// 주문취소 선택 상품의 상품별 사유 입력 완료 여부를 검증합니다.
+function resolveShopMypageOrderCancelReasonValidationMessage(
+  cancelItemList: ShopMypageOrderCancelSubmitItem[],
+  itemReasonMap: ShopMypageOrderItemReasonMap,
+  reasonList: ShopMypageOrderCancelReasonItem[],
+): string {
+  return resolveShopMypageOrderItemReasonValidationMessage(
+    buildShopMypageOrderSelectedOrdDtlNoList(cancelItemList),
+    itemReasonMap,
+    reasonList,
+    "주문 취소 사유를 선택해주세요.",
+    "기타 사유를 입력해주세요.",
+  );
 }
 
 // 일반 금액 문자열을 `-#,###원` 또는 `#,###원` 형식으로 변환합니다.
@@ -227,8 +261,9 @@ export default function ShopMypageOrderCancelSection({
   const [selectionMap, setSelectionMap] = useState<ShopMypageOrderCancelSelectionMap>(() =>
     createInitialShopMypageOrderCancelSelectionMap(order, cancelTarget.cancelMode, cancelTarget.initialOrdDtlNo),
   );
-  const [selectedReasonCd, setSelectedReasonCd] = useState<string>("");
-  const [reasonDetail, setReasonDetail] = useState<string>("");
+  const [itemReasonMap, setItemReasonMap] = useState<ShopMypageOrderItemReasonMap>(() =>
+    createInitialShopMypageOrderItemReasonMap(order),
+  );
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // useMemo 훅은 조건부 반환 전에 선언합니다 (React Rules of Hooks 준수).
@@ -254,21 +289,20 @@ export default function ShopMypageOrderCancelSection({
       ),
     [partialCancelableDetailList, selectionMap],
   );
-  const selectedReason = useMemo(
-    () => reasonList.find((reasonItem) => reasonItem.cd === selectedReasonCd) ?? null,
-    [reasonList, selectedReasonCd],
+  const cancelItemList = useMemo(
+    () => buildShopMypageOrderCancelSubmitItemList(order?.detailList ?? [], selectionMap, itemReasonMap),
+    [itemReasonMap, order?.detailList, selectionMap],
   );
 
   // 주문 정보가 없으면 빈 화면을 반환합니다.
   if (!order) {
     return null;
   }
-  const reasonValidationMessage =
-    selectedReasonCd.trim() === ""
-      ? "주문 취소 사유를 선택해주세요."
-      : selectedReason?.cd === "C_03" && reasonDetail.trim() === ""
-        ? "기타 사유를 입력해주세요."
-        : "";
+  const reasonValidationMessage = resolveShopMypageOrderCancelReasonValidationMessage(
+    cancelItemList,
+    itemReasonMap,
+    reasonList,
+  );
   const submitMessage = reasonValidationMessage !== "" ? reasonValidationMessage : cancelPreviewResult.submitBlockMessage;
   const submitDisabled = isSubmitting || reasonValidationMessage !== "" || !cancelPreviewResult.canSubmit;
 
@@ -326,13 +360,37 @@ export default function ShopMypageOrderCancelSection({
     });
   };
 
+  // 개별 상품의 취소 사유 코드를 현재 상태 맵에 반영합니다.
+  const handleChangeItemReasonCd = (ordDtlNo: number, nextReasonCd: string): void => {
+    setItemReasonMap((previousItemReasonMap) => ({
+      ...previousItemReasonMap,
+      [ordDtlNo]: {
+        reasonCd: nextReasonCd,
+        reasonDetail:
+          resolveShopMypageOrderItemReasonState(previousItemReasonMap, ordDtlNo).reasonCd === nextReasonCd
+            ? resolveShopMypageOrderItemReasonState(previousItemReasonMap, ordDtlNo).reasonDetail
+            : "",
+      },
+    }));
+  };
+
+  // 개별 상품의 취소 사유 직접입력값을 현재 상태 맵에 반영합니다.
+  const handleChangeItemReasonDetail = (ordDtlNo: number, nextReasonDetail: string): void => {
+    setItemReasonMap((previousItemReasonMap) => ({
+      ...previousItemReasonMap,
+      [ordDtlNo]: {
+        ...resolveShopMypageOrderItemReasonState(previousItemReasonMap, ordDtlNo),
+        reasonDetail: nextReasonDetail,
+      },
+    }));
+  };
+
   // 취소신청 버튼 클릭 시 서버 재검증과 실제 취소 처리를 요청합니다.
   const handleSubmit = async (): Promise<void> => {
     if (submitDisabled) {
       window.alert(submitMessage || "취소 정보를 확인해주세요.");
       return;
     }
-    const cancelItemList = buildShopMypageOrderCancelSubmitItemList(order.detailList, selectionMap);
     if (cancelItemList.length < 1) {
       window.alert("취소할 상품을 선택해주세요.");
       return;
@@ -340,8 +398,6 @@ export default function ShopMypageOrderCancelSection({
 
     const requestBody: ShopMypageOrderCancelSubmitRequest = {
       ordNo: order.ordNo,
-      reasonCd: selectedReasonCd,
-      reasonDetail: reasonDetail.trim(),
       cancelItemList,
       previewAmount: {
         expectedRefundAmt: cancelPreviewResult.cancelPreviewSummary.expectedRefundAmt,
@@ -392,53 +448,15 @@ export default function ShopMypageOrderCancelSection({
         order={order}
         cancelMode={cancelMode}
         selectionMap={selectionMap}
+        itemReasonMap={itemReasonMap}
+        reasonList={reasonList}
         allSelected={allSelected}
         onToggleAll={handleToggleAll}
         onToggleItem={handleToggleItem}
         onChangeItemQty={handleChangeItemQty}
+        onChangeItemReasonCd={handleChangeItemReasonCd}
+        onChangeItemReasonDetail={handleChangeItemReasonDetail}
       />
-
-      <section className={styles.detailSectionBlock}>
-        <h2 className={styles.detailSectionTitle}>주문 취소 사유</h2>
-        <div className={styles.cancelReasonBox}>
-          <div className={styles.cancelReasonField}>
-            <label htmlFor="cancelReasonCd" className={styles.cancelFieldLabel}>
-              취소 사유
-            </label>
-            <select
-              id="cancelReasonCd"
-              className={styles.cancelReasonSelect}
-              value={selectedReasonCd}
-              onChange={(event) => {
-                setSelectedReasonCd(event.target.value);
-              }}
-            >
-              <option value="">취소 사유를 선택해주세요.</option>
-              {reasonList.map((reasonItem) => (
-                <option key={reasonItem.cd} value={reasonItem.cd}>
-                  {reasonItem.cdNm}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className={styles.cancelReasonField}>
-            <label htmlFor="cancelReasonDetail" className={styles.cancelFieldLabel}>
-              직접 기입
-            </label>
-            <textarea
-              id="cancelReasonDetail"
-              className={styles.cancelReasonTextarea}
-              rows={4}
-              value={reasonDetail}
-              placeholder="추가로 전달할 주문 취소 사유가 있다면 입력해주세요."
-              onChange={(event) => {
-                setReasonDetail(event.target.value);
-              }}
-            />
-          </div>
-        </div>
-      </section>
 
       <section className={styles.detailSectionBlock}>
         <h2 className={styles.detailSectionTitle}>현재 주문 금액</h2>

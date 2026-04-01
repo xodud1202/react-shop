@@ -5,9 +5,13 @@ import Link from "next/link";
 import type {
   ShopMypageOrderAmountSummary,
   ShopMypageOrderDetailItem,
+  ShopMypageOrderItemReasonMap,
   ShopMypageOrderReturnPageResponse,
-  ShopMypageOrderReturnReasonItem,
 } from "@/domains/mypage/types";
+import {
+  createInitialShopMypageOrderItemReasonMap,
+  resolveShopMypageOrderItemReasonState,
+} from "@/domains/mypage/utils/shopMypageOrderClaimReason";
 import ShopOrderAddressRegisterLayer from "@/domains/order/components/ShopOrderAddressRegisterLayer";
 import ShopOrderAddressSelectLayer from "@/domains/order/components/ShopOrderAddressSelectLayer";
 import type { ShopOrderAddress, ShopOrderAddressSaveResponse } from "@/domains/order/types";
@@ -196,11 +200,6 @@ function createReturnPreviewAmountColumnList(
   ];
 }
 
-// 선택된 반품 사유가 상세 입력을 요구하는지 반환합니다.
-function isShopMypageOrderReturnReasonDetailRequired(reasonItem: ShopMypageOrderReturnReasonItem | null): boolean {
-  return (reasonItem?.cdNm || "").includes("기타");
-}
-
 // 회수지 기본주소 라인을 포맷 문자열로 변환합니다.
 function formatPickupAddressLine(address: ShopOrderAddress): string {
   return `(${address.postNo}) ${address.baseAddress}`;
@@ -238,18 +237,28 @@ export default function ShopMypageOrderReturnSection({
   const [selectionMap, setSelectionMap] = useState<ShopMypageOrderReturnSelectionMap>(() =>
     createInitialShopMypageOrderReturnSelectionMap(order, returnTarget.initialOrdDtlNo),
   );
-  const [selectedReasonCd, setSelectedReasonCd] = useState<string>("");
-  const [reasonDetail, setReasonDetail] = useState<string>("");
+  const [itemReasonMap, setItemReasonMap] = useState<ShopMypageOrderItemReasonMap>(() =>
+    createInitialShopMypageOrderItemReasonMap(order),
+  );
 
   // 반품 환불 예정 금액과 화면 표시용 컬럼을 계산합니다.
   const returnPreviewResult = useMemo(
-    () => buildShopMypageOrderReturnPreviewResult(order, amountSummary, siteInfo, selectionMap),
-    [order, amountSummary, siteInfo, selectionMap],
+    () =>
+      buildShopMypageOrderReturnPreviewResult(
+        order,
+        amountSummary,
+        siteInfo,
+        orderReturnPageData.returnFeeContext,
+        selectionMap,
+        itemReasonMap,
+        reasonList,
+      ),
+    [amountSummary, itemReasonMap, order, orderReturnPageData.returnFeeContext, reasonList, selectionMap, siteInfo],
   );
   const remainingAmountColumnList = useMemo(() => createRemainingAmountColumnList(amountSummary), [amountSummary]);
   const returnPreviewAmountColumnList = useMemo(
-    () => createReturnPreviewAmountColumnList(returnPreviewResult.cancelPreviewSummary),
-    [returnPreviewResult.cancelPreviewSummary],
+    () => createReturnPreviewAmountColumnList(returnPreviewResult.returnPreviewSummary),
+    [returnPreviewResult.returnPreviewSummary],
   );
   const returnableDetailList = useMemo(
     () => (order?.detailList ?? []).filter((detailItem) => isShopMypageOrderReturnable(detailItem)),
@@ -263,17 +272,7 @@ export default function ShopMypageOrderReturnSection({
       ),
     [returnableDetailList, selectionMap],
   );
-  const selectedReason = useMemo(
-    () => reasonList.find((reasonItem) => reasonItem.cd === selectedReasonCd) ?? null,
-    [reasonList, selectedReasonCd],
-  );
-  const reasonValidationMessage =
-    selectedReasonCd.trim() === ""
-      ? "반품 사유를 선택해주세요."
-      : isShopMypageOrderReturnReasonDetailRequired(selectedReason) && reasonDetail.trim() === ""
-        ? "기타 사유를 입력해주세요."
-        : "";
-  const infoMessage = reasonValidationMessage || returnPreviewResult.submitBlockMessage;
+  const infoMessage = returnPreviewResult.submitBlockMessage;
 
   // 주문 정보가 없으면 빈 화면을 반환합니다.
   if (!order) {
@@ -393,6 +392,31 @@ export default function ShopMypageOrderReturnSection({
     });
   };
 
+  // 개별 상품의 반품 사유 코드를 현재 상태 맵에 반영합니다.
+  const handleChangeItemReasonCd = (ordDtlNo: number, nextReasonCd: string): void => {
+    setItemReasonMap((previousItemReasonMap) => {
+      const previousReasonState = resolveShopMypageOrderItemReasonState(previousItemReasonMap, ordDtlNo);
+      return {
+        ...previousItemReasonMap,
+        [ordDtlNo]: {
+          reasonCd: nextReasonCd,
+          reasonDetail: previousReasonState.reasonCd === nextReasonCd ? previousReasonState.reasonDetail : "",
+        },
+      };
+    });
+  };
+
+  // 개별 상품의 반품 사유 직접입력값을 현재 상태 맵에 반영합니다.
+  const handleChangeItemReasonDetail = (ordDtlNo: number, nextReasonDetail: string): void => {
+    setItemReasonMap((previousItemReasonMap) => ({
+      ...previousItemReasonMap,
+      [ordDtlNo]: {
+        ...resolveShopMypageOrderItemReasonState(previousItemReasonMap, ordDtlNo),
+        reasonDetail: nextReasonDetail,
+      },
+    }));
+  };
+
   // 반품신청 버튼 클릭 시 저장 없이 추후 오픈 안내만 노출합니다.
   const handleSubmit = (): void => {
     window.alert("반품 신청 기능은 추후 오픈 예정입니다.");
@@ -414,53 +438,15 @@ export default function ShopMypageOrderReturnSection({
       <ShopMypageOrderReturnItemList
         order={order}
         selectionMap={selectionMap}
+        itemReasonMap={itemReasonMap}
+        reasonList={reasonList}
         allSelected={allSelected}
         onToggleAll={handleToggleAll}
         onToggleItem={handleToggleItem}
         onChangeItemQty={handleChangeItemQty}
+        onChangeItemReasonCd={handleChangeItemReasonCd}
+        onChangeItemReasonDetail={handleChangeItemReasonDetail}
       />
-
-      <section className={styles.detailSectionBlock}>
-        <h2 className={styles.detailSectionTitle}>반품 사유</h2>
-        <div className={styles.cancelReasonBox}>
-          <div className={styles.cancelReasonField}>
-            <label htmlFor="returnReasonCd" className={styles.cancelFieldLabel}>
-              반품 사유
-            </label>
-            <select
-              id="returnReasonCd"
-              className={styles.cancelReasonSelect}
-              value={selectedReasonCd}
-              onChange={(event) => {
-                setSelectedReasonCd(event.target.value);
-              }}
-            >
-              <option value="">반품 사유를 선택해주세요.</option>
-              {reasonList.map((reasonItem) => (
-                <option key={reasonItem.cd} value={reasonItem.cd}>
-                  {reasonItem.cdNm}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className={styles.cancelReasonField}>
-            <label htmlFor="returnReasonDetail" className={styles.cancelFieldLabel}>
-              직접 기입
-            </label>
-            <textarea
-              id="returnReasonDetail"
-              className={styles.cancelReasonTextarea}
-              rows={4}
-              value={reasonDetail}
-              placeholder="추가로 전달할 반품 사유가 있다면 입력해주세요."
-              onChange={(event) => {
-                setReasonDetail(event.target.value);
-              }}
-            />
-          </div>
-        </div>
-      </section>
 
       <section className={styles.detailSectionBlock}>
         <h2 className={styles.detailSectionTitle}>현재 주문 금액</h2>
@@ -469,7 +455,13 @@ export default function ShopMypageOrderReturnSection({
 
       <section className={styles.detailSectionBlock}>
         <h2 className={styles.detailSectionTitle}>반품 예정 금액</h2>
-        <ShopMypageOrderAmountTable columnList={returnPreviewAmountColumnList} />
+        {returnPreviewResult.previewVisible ? (
+          <ShopMypageOrderAmountTable columnList={returnPreviewAmountColumnList} />
+        ) : (
+          <div className={styles.previewPendingBox}>
+            <p className={styles.previewPendingText}>{infoMessage || "사유를 선택하시면 환불 예정 금액이 보여집니다."}</p>
+          </div>
+        )}
       </section>
 
       <section className={styles.detailSectionBlock}>

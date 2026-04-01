@@ -1,7 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import type { ShopMypageOrderDetailItem, ShopMypageOrderGroup } from "@/domains/mypage/types";
+import ShopMypageOrderClaimReasonFields from "@/domains/mypage/components/ShopMypageOrderClaimReasonFields";
+import type {
+  ShopMypageOrderCancelReasonItem,
+  ShopMypageOrderDetailItem,
+  ShopMypageOrderGroup,
+  ShopMypageOrderItemReasonMap,
+} from "@/domains/mypage/types";
+import { resolveShopMypageOrderItemReasonState } from "@/domains/mypage/utils/shopMypageOrderClaimReason";
 import {
   formatShopMypageOrderCount,
   formatShopMypageOrderPrice,
@@ -20,10 +27,14 @@ interface ShopMypageOrderCancelItemListProps {
   order: ShopMypageOrderGroup;
   cancelMode: ShopMypageOrderCancelMode;
   selectionMap: ShopMypageOrderCancelSelectionMap;
+  itemReasonMap: ShopMypageOrderItemReasonMap;
+  reasonList: ShopMypageOrderCancelReasonItem[];
   allSelected: boolean;
   onToggleAll: (checked: boolean) => void;
   onToggleItem: (detailItem: ShopMypageOrderDetailItem, checked: boolean) => void;
   onChangeItemQty: (detailItem: ShopMypageOrderDetailItem, nextQty: number) => void;
+  onChangeItemReasonCd: (ordDtlNo: number, nextReasonCd: string) => void;
+  onChangeItemReasonDetail: (ordDtlNo: number, nextReasonDetail: string) => void;
 }
 
 // 주문취소 모드 라벨을 반환합니다.
@@ -39,10 +50,14 @@ export default function ShopMypageOrderCancelItemList({
   order,
   cancelMode,
   selectionMap,
+  itemReasonMap,
+  reasonList,
   allSelected,
   onToggleAll,
   onToggleItem,
   onChangeItemQty,
+  onChangeItemReasonCd,
+  onChangeItemReasonDetail,
 }: ShopMypageOrderCancelItemListProps) {
   const isFullMode = cancelMode === "full";
 
@@ -70,10 +85,12 @@ export default function ShopMypageOrderCancelItemList({
         <ul className={styles.detailList}>
           {order.detailList.map((detailItem) => {
             const selectionItem = resolveShopMypageOrderCancelSelectionItem(selectionMap, detailItem);
+            const reasonState = resolveShopMypageOrderItemReasonState(itemReasonMap, detailItem.ordDtlNo);
             const currentRemainingQty = detailItem.cancelableQty;
             const selectable = !isFullMode && isShopMypageOrderPartialCancelable(detailItem);
             const quantityEditable = selectable && selectionItem.selected;
             const activeDetail = isShopMypageOrderActiveDetail(detailItem);
+            const reasonEditable = isFullMode ? activeDetail : selectionItem.selected;
 
             return (
               <li key={`${detailItem.ordNo}-${detailItem.ordDtlNo}`} className={styles.detailRow}>
@@ -131,6 +148,21 @@ export default function ShopMypageOrderCancelItemList({
                       </div>
                     </div>
                   </div>
+
+                  <ShopMypageOrderClaimReasonFields
+                    title="상품별 취소 사유"
+                    reasonLabel="취소 사유"
+                    textareaPlaceholder="추가로 전달할 주문 취소 사유가 있다면 입력해주세요."
+                    reasonList={reasonList}
+                    reasonState={reasonState}
+                    disabled={!reasonEditable}
+                    onChangeReasonCd={(nextReasonCd) => {
+                      onChangeItemReasonCd(detailItem.ordDtlNo, nextReasonCd);
+                    }}
+                    onChangeReasonDetail={(nextReasonDetail) => {
+                      onChangeItemReasonDetail(detailItem.ordDtlNo, nextReasonDetail);
+                    }}
+                  />
                 </div>
 
                 <div className={styles.cancelControlArea}>
