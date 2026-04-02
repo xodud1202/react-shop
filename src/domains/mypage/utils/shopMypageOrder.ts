@@ -110,11 +110,27 @@ export function resolveShopMypageOrderActionHref(
   return null;
 }
 
+// 주문상세 행에 진행 중 반품/교환 클레임이 있는지 반환합니다.
+export function hasShopMypageOrderActiveClaim(detailItem: ShopMypageOrderDetailItem): boolean {
+  return detailItem.activeReturnClaimYn || detailItem.activeExchangeClaimYn;
+}
+
+// 주문상세 행의 화면 표시용 상태명을 반환합니다.
+export function resolveShopMypageOrderDisplayStatusName(detailItem: ShopMypageOrderDetailItem): string {
+  return detailItem.displayOrdDtlStatNm || detailItem.ordDtlStatNm;
+}
+
 // 주문상세 행 기준 실제 노출할 액션 버튼 목록을 반환합니다.
 export function resolveShopMypageOrderVisibleActionLabelList(detailItem: ShopMypageOrderDetailItem): string[] {
   return resolveShopMypageOrderActionLabelList(detailItem.ordDtlStatCd).filter((actionLabel) => {
+    if (hasShopMypageOrderActiveClaim(detailItem)) {
+      return actionLabel === "1:1문의";
+    }
     if (actionLabel === "반품신청") {
       return detailItem.returnApplyableYn;
+    }
+    if (actionLabel === "교환신청") {
+      return detailItem.exchangeApplyableYn;
     }
     return true;
   });

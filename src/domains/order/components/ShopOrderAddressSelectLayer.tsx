@@ -9,15 +9,29 @@ interface ShopOrderAddressSelectLayerProps {
   addressList: ShopOrderAddress[];
   selectedAddressNm: string;
   onSelect: (address: ShopOrderAddress) => void;
-  onEdit: (address: ShopOrderAddress) => void;
-  onOpenRegister: () => void;
+  onEdit?: (address: ShopOrderAddress) => void;
+  onOpenRegister?: () => void;
   onClose: () => void;
   addressLabel?: string;
+  showEditButton?: boolean;
+  showRegisterButton?: boolean;
+  resolveContactText?: (address: ShopOrderAddress) => string;
 }
 
 // 공통 레이어 오버레이 바깥 영역 클릭 여부를 판정합니다.
 function isOverlayClick(event: MouseEvent<HTMLDivElement>): boolean {
   return event.target === event.currentTarget;
+}
+
+// 주소 카드에 표시할 연락처 문자열을 반환합니다.
+function formatAddressContactText(
+  address: ShopOrderAddress,
+  resolveContactText?: (address: ShopOrderAddress) => string,
+): string {
+  if (typeof resolveContactText === "function") {
+    return resolveContactText(address);
+  }
+  return `${address.rsvNm} | ${address.phoneNumber}`;
 }
 
 // 주문서 배송지 선택 레이어팝업을 렌더링합니다.
@@ -29,7 +43,13 @@ export default function ShopOrderAddressSelectLayer({
   onOpenRegister,
   onClose,
   addressLabel = "주소지",
+  showEditButton = true,
+  showRegisterButton = true,
+  resolveContactText,
 }: ShopOrderAddressSelectLayerProps) {
+  const canOpenRegister = showRegisterButton && typeof onOpenRegister === "function";
+  const canEdit = showEditButton && typeof onEdit === "function";
+
   // 팝업이 열린 동안 배경 스크롤을 잠그고 ESC 키 닫기를 처리합니다.
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -69,9 +89,11 @@ export default function ShopOrderAddressSelectLayer({
           <div className={styles.headerActionRow}>
             <h2 className={styles.headerTitle}>{addressLabel} 선택</h2>
             <div className={styles.headerButtonGroup}>
-              <button type="button" className={styles.headerActionButton} onClick={onOpenRegister}>
-                {addressLabel} 등록
-              </button>
+              {canOpenRegister ? (
+                <button type="button" className={styles.headerActionButton} onClick={onOpenRegister}>
+                  {addressLabel} 등록
+                </button>
+              ) : null}
               <button
                 type="button"
                 className={styles.closeButton}
@@ -88,7 +110,11 @@ export default function ShopOrderAddressSelectLayer({
           {addressList.length === 0 ? (
             <div className={styles.emptyState}>
               <strong className={styles.emptyTitle}>등록된 {addressLabel}가 없습니다.</strong>
-              <p className={styles.emptyDescription}>상단의 {addressLabel} 등록 버튼으로 새 {addressLabel}를 추가해주세요.</p>
+              <p className={styles.emptyDescription}>
+                {canOpenRegister
+                  ? `상단의 ${addressLabel} 등록 버튼으로 새 ${addressLabel}를 추가해주세요.`
+                  : `등록된 ${addressLabel}를 확인해주세요.`}
+              </p>
             </div>
           ) : (
             <ul className={styles.addressList}>
@@ -105,7 +131,7 @@ export default function ShopOrderAddressSelectLayer({
                         </div>
                       </div>
                       <p className={styles.addressMetaText}>
-                        {address.rsvNm} | {address.phoneNumber}
+                        {formatAddressContactText(address, resolveContactText)}
                       </p>
                       <p className={styles.addressMainText}>
                         ({address.postNo}) {address.baseAddress}
@@ -113,13 +139,15 @@ export default function ShopOrderAddressSelectLayer({
                       <p className={styles.addressSubText}>{address.detailAddress}</p>
 
                       <div className={styles.addressActionRow}>
-                        <button
-                          type="button"
-                          className={`${styles.secondaryButton} ${styles.addressActionButton}`}
-                          onClick={() => onEdit(address)}
-                        >
-                          수정
-                        </button>
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className={`${styles.secondaryButton} ${styles.addressActionButton}`}
+                            onClick={() => onEdit(address)}
+                          >
+                            수정
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className={`${styles.primaryButton} ${styles.addressActionButton}`}

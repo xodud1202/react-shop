@@ -44,6 +44,7 @@ interface ShopCartSummaryAmount {
 
 interface ShopCartDeleteRequestPayload {
   cartItemList: Array<{
+    cartId: number;
     goodsId: string;
     sizeId: string;
   }>;
@@ -210,6 +211,7 @@ function resolveEditableSizeOptionList(sizeOptions: ShopCartSizeOption[]): ShopC
 function buildDeletePayload(cartList: ShopCartItem[]): ShopCartDeleteRequestPayload {
   return {
     cartItemList: cartList.map((cartItem) => ({
+      cartId: cartItem.cartId,
       goodsId: cartItem.goodsId,
       sizeId: cartItem.sizeId,
     })),
@@ -433,6 +435,7 @@ export default function ShopCartSection({ cartPageData }: ShopCartSectionProps) 
       const result = await requestShopClientApi<{ message?: string }>(getShopCartOptionUpdatePath(), {
         method: "POST",
         body: {
+          cartId: cartItem.cartId,
           goodsId: cartItem.goodsId,
           sizeId: cartItem.sizeId,
           targetSizeId: draft.targetSizeId,

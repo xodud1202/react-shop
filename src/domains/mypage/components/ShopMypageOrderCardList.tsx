@@ -17,6 +17,7 @@ import {
   isShopMypageOrderStatusActionLabel,
   resolveShopMypageOrderActionHref,
   resolveShopMypageOrderDetailAmount,
+  resolveShopMypageOrderDisplayStatusName,
   resolveShopMypageOrderStatusActionPath,
   resolveShopMypageOrderStatusActionSuccessMessage,
   resolveShopMypageOrderVisibleActionLabelList,
@@ -130,7 +131,7 @@ export default function ShopMypageOrderCardList({
                         </div>
                         <div className={styles.metaInfoItem}>
                           <span className={styles.metaLabel}>주문상태</span>
-                          <span className={styles.metaValue}>{detailItem.ordDtlStatNm || "-"}</span>
+                          <span className={styles.metaValue}>{resolveShopMypageOrderDisplayStatusName(detailItem) || "-"}</span>
                         </div>
                       </div>
                       <div className={styles.metaInfoRow}>

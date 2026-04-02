@@ -100,10 +100,16 @@ function resolveShopMypageOrderReturnableQty(detailItem: ShopMypageOrderDetailIt
   return resolveShopMypageOrderCurrentRemainingQty(detailItem);
 }
 
+// 주문상세 행에 반품/교환 진행 중 클레임이 있는지 반환합니다.
+export function hasShopMypageOrderBlockedClaim(detailItem: ShopMypageOrderDetailItem): boolean {
+  return detailItem.activeReturnClaimYn || detailItem.activeExchangeClaimYn;
+}
+
 // 주문상세 행이 반품신청 가능한 상태인지 반환합니다.
 export function isShopMypageOrderReturnable(detailItem: ShopMypageOrderDetailItem): boolean {
   return (
     detailItem.ordDtlStatCd === DELIVERY_COMPLETED_STATUS &&
+    !hasShopMypageOrderBlockedClaim(detailItem) &&
     detailItem.returnApplyableYn &&
     resolveShopMypageOrderReturnableQty(detailItem) > 0
   );

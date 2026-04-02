@@ -171,7 +171,12 @@ function normalizeShopMypageOrderDetailItem(rawItem: unknown): ShopMypageOrderDe
     ordDtlNo: normalizeNonNegativeNumber(source.ordDtlNo),
     ordDtlStatCd: normalizeString(source.ordDtlStatCd),
     ordDtlStatNm: normalizeString(source.ordDtlStatNm),
+    displayOrdDtlStatCd: normalizeString(source.displayOrdDtlStatCd),
+    displayOrdDtlStatNm: normalizeString(source.displayOrdDtlStatNm),
     returnApplyableYn: normalizeBoolean(source.returnApplyableYn),
+    exchangeApplyableYn: normalizeBoolean(source.exchangeApplyableYn),
+    activeReturnClaimYn: normalizeBoolean(source.activeReturnClaimYn),
+    activeExchangeClaimYn: normalizeBoolean(source.activeExchangeClaimYn),
     goodsId: normalizeString(source.goodsId),
     goodsNm: normalizeString(source.goodsNm),
     sizeId: normalizeString(source.sizeId),
@@ -644,6 +649,7 @@ export async function fetchShopMypageOrderReturnPageServerData(
       response.pickupAddress && typeof response.pickupAddress === "object"
         ? normalizeShopOrderAddress(response.pickupAddress)
         : null,
+    customerPhoneNumber: normalizeString(response.customerPhoneNumber),
   };
 }
 

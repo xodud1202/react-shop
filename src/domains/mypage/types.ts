@@ -25,7 +25,12 @@ export interface ShopMypageOrderDetailItem {
   ordDtlNo: number;
   ordDtlStatCd: string;
   ordDtlStatNm: string;
+  displayOrdDtlStatCd: string;
+  displayOrdDtlStatNm: string;
   returnApplyableYn: boolean;
+  exchangeApplyableYn: boolean;
+  activeReturnClaimYn: boolean;
+  activeExchangeClaimYn: boolean;
   goodsId: string;
   goodsNm: string;
   sizeId: string;
@@ -142,6 +147,7 @@ export interface ShopMypageOrderReturnPageResponse {
   returnFeeContext: ShopMypageOrderReturnFeeContext;
   addressList: ShopOrderAddress[];
   pickupAddress: ShopOrderAddress | null;
+  customerPhoneNumber: string;
 }
 
 // 마이페이지 주문취소 제출용 미리보기 금액 타입입니다.
@@ -177,6 +183,39 @@ export interface ShopMypageOrderCancelSubmitResponse {
   payStatCd: string;
   refundedCashAmt: number;
   restoredPointAmt: number;
+}
+
+// 마이페이지 주문반품 제출용 미리보기 금액 타입입니다.
+export type ShopMypageOrderReturnPreviewAmount = ShopMypageOrderCancelPreviewAmount;
+
+// 마이페이지 주문반품 제출 주문상품 아이템 타입입니다.
+export interface ShopMypageOrderReturnSubmitItem {
+  ordDtlNo: number;
+  returnQty: number;
+  reasonCd: string;
+  reasonDetail: string;
+}
+
+// 마이페이지 주문반품 제출 회수지 타입입니다.
+export interface ShopMypageOrderReturnSubmitPickupAddress {
+  rsvNm: string;
+  postNo: string;
+  baseAddress: string;
+  detailAddress: string;
+}
+
+// 마이페이지 주문반품 제출 요청 타입입니다.
+export interface ShopMypageOrderReturnSubmitRequest {
+  ordNo: string;
+  returnItemList: ShopMypageOrderReturnSubmitItem[];
+  previewAmount: ShopMypageOrderReturnPreviewAmount;
+  pickupAddress: ShopMypageOrderReturnSubmitPickupAddress;
+}
+
+// 마이페이지 주문반품 제출 응답 타입입니다.
+export interface ShopMypageOrderReturnSubmitResponse {
+  clmNo: string;
+  ordNo: string;
 }
 
 // 마이페이지 주문상태 변경 요청 타입입니다.

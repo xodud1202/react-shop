@@ -2,30 +2,34 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type {
   ShopMypageOrderAmountSummary,
   ShopMypageOrderDetailItem,
   ShopMypageOrderItemReasonMap,
   ShopMypageOrderReturnPageResponse,
+  ShopMypageOrderReturnSubmitRequest,
+  ShopMypageOrderReturnSubmitResponse,
 } from "@/domains/mypage/types";
 import {
   createInitialShopMypageOrderItemReasonMap,
   resolveShopMypageOrderItemReasonState,
 } from "@/domains/mypage/utils/shopMypageOrderClaimReason";
-import ShopOrderAddressRegisterLayer from "@/domains/order/components/ShopOrderAddressRegisterLayer";
 import ShopOrderAddressSelectLayer from "@/domains/order/components/ShopOrderAddressSelectLayer";
-import type { ShopOrderAddress, ShopOrderAddressSaveResponse } from "@/domains/order/types";
+import type { ShopOrderAddress } from "@/domains/order/types";
 import { formatShopMypageOrderPrice } from "@/domains/mypage/utils/shopMypageOrder";
 import {
   buildShopMypageOrderReturnPreviewResult,
   clampShopMypageOrderReturnQty,
   createInitialShopMypageOrderReturnSelectionMap,
+  hasShopMypageOrderBlockedClaim,
   isShopMypageOrderReturnable,
   resolveShopMypageOrderReturnSelectionItem,
   resolveShopMypageOrderReturnTarget,
   type ShopMypageOrderReturnPreviewSummary,
   type ShopMypageOrderReturnSelectionMap,
 } from "@/domains/mypage/utils/shopMypageOrderReturn";
+import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import type { ShopMypageOrderAmountTableColumn } from "./ShopMypageOrderAmountTable";
 import ShopMypageOrderAmountTable from "./ShopMypageOrderAmountTable";
 import ShopMypageOrderReturnItemList from "./ShopMypageOrderReturnItemList";
@@ -34,6 +38,76 @@ import styles from "./ShopMypageOrderSection.module.css";
 interface ShopMypageOrderReturnSectionProps {
   orderReturnPageData: ShopMypageOrderReturnPageResponse;
   initialOrdDtlNo?: number;
+}
+
+const ORDER_CHANGE_ADDRESS_NAME_MAX_LENGTH = 20;
+const ORDER_CHANGE_ADDRESS_POST_NO_MAX_LENGTH = 10;
+const ORDER_CHANGE_ADDRESS_BASE_MAX_LENGTH = 100;
+const ORDER_CHANGE_ADDRESS_DETAIL_MAX_LENGTH = 100;
+
+// 현재 선택 상태를 주문반품 제출용 주문상품 목록으로 변환합니다.
+function buildShopMypageOrderReturnSubmitItemList(
+  detailList: ShopMypageOrderDetailItem[],
+  selectionMap: ShopMypageOrderReturnSelectionMap,
+  itemReasonMap: ShopMypageOrderItemReasonMap,
+): ShopMypageOrderReturnSubmitRequest["returnItemList"] {
+  return detailList.flatMap((detailItem) => {
+    const selectionItem = resolveShopMypageOrderReturnSelectionItem(selectionMap, detailItem);
+    if (!selectionItem.selected || selectionItem.cancelQty < 1) {
+      return [];
+    }
+    const reasonState = resolveShopMypageOrderItemReasonState(itemReasonMap, detailItem.ordDtlNo);
+    return [
+      {
+        ordDtlNo: detailItem.ordDtlNo,
+        returnQty: selectionItem.cancelQty,
+        reasonCd: reasonState.reasonCd.trim(),
+        reasonDetail: reasonState.reasonDetail.trim(),
+      },
+    ];
+  });
+}
+
+// 반품 회수지 입력값을 제출용 회수지 형식으로 변환합니다.
+function buildShopMypageOrderReturnSubmitPickupAddress(
+  pickupAddress: ShopOrderAddress,
+): ShopMypageOrderReturnSubmitRequest["pickupAddress"] {
+  return {
+    rsvNm: pickupAddress.rsvNm.trim(),
+    postNo: pickupAddress.postNo.trim(),
+    baseAddress: pickupAddress.baseAddress.trim(),
+    detailAddress: pickupAddress.detailAddress.trim(),
+  };
+}
+
+// 반품 회수지 입력값의 클라이언트 유효성을 확인합니다.
+function resolveShopMypageOrderReturnPickupAddressValidationMessage(pickupAddress: ShopOrderAddress | null): string {
+  if (!pickupAddress) {
+    return "회수지를 선택해주세요.";
+  }
+
+  const submitPickupAddress = buildShopMypageOrderReturnSubmitPickupAddress(pickupAddress);
+  if (
+    submitPickupAddress.rsvNm === "" ||
+    submitPickupAddress.postNo === "" ||
+    submitPickupAddress.baseAddress === "" ||
+    submitPickupAddress.detailAddress === ""
+  ) {
+    return "회수지 정보를 확인해주세요.";
+  }
+  if (submitPickupAddress.rsvNm.length > ORDER_CHANGE_ADDRESS_NAME_MAX_LENGTH) {
+    return "회수지 정보를 확인해주세요.";
+  }
+  if (submitPickupAddress.postNo.length > ORDER_CHANGE_ADDRESS_POST_NO_MAX_LENGTH) {
+    return "회수지 정보를 확인해주세요.";
+  }
+  if (submitPickupAddress.baseAddress.length > ORDER_CHANGE_ADDRESS_BASE_MAX_LENGTH) {
+    return "회수지 정보를 확인해주세요.";
+  }
+  if (submitPickupAddress.detailAddress.length > ORDER_CHANGE_ADDRESS_DETAIL_MAX_LENGTH) {
+    return "회수지 정보를 확인해주세요.";
+  }
+  return "";
 }
 
 // 일반 금액 문자열을 `-#,###원` 또는 `#,###원` 형식으로 변환합니다.
@@ -206,17 +280,17 @@ function formatPickupAddressLine(address: ShopOrderAddress): string {
 }
 
 // 회수지 연락처 라인을 상태에 맞게 생성합니다.
-function formatPickupContactLine(address: ShopOrderAddress): string {
-  const receiverName = address.rsvNm.trim();
-  const phoneNumber = address.phoneNumber.trim();
-  if (receiverName !== "" && phoneNumber !== "") {
-    return `${receiverName} | ${phoneNumber}`;
+function formatPickupContactLine(receiverName: string, phoneNumber: string): string {
+  const trimmedReceiverName = receiverName.trim();
+  const trimmedPhoneNumber = phoneNumber.trim();
+  if (trimmedReceiverName !== "" && trimmedPhoneNumber !== "") {
+    return `${trimmedReceiverName} | ${trimmedPhoneNumber}`;
   }
-  if (receiverName !== "") {
-    return receiverName;
+  if (trimmedReceiverName !== "") {
+    return trimmedReceiverName;
   }
-  if (phoneNumber !== "") {
-    return phoneNumber;
+  if (trimmedPhoneNumber !== "") {
+    return trimmedPhoneNumber;
   }
   return "연락처 정보 없음";
 }
@@ -226,20 +300,19 @@ export default function ShopMypageOrderReturnSection({
   orderReturnPageData,
   initialOrdDtlNo,
 }: ShopMypageOrderReturnSectionProps) {
+  const router = useRouter();
   const { order, amountSummary, reasonList, siteInfo } = orderReturnPageData;
   const returnTarget = resolveShopMypageOrderReturnTarget(order, initialOrdDtlNo);
-  const [addressList, setAddressList] = useState<ShopOrderAddress[]>(orderReturnPageData.addressList);
+  const addressList = orderReturnPageData.addressList;
   const [selectedPickupAddress, setSelectedPickupAddress] = useState<ShopOrderAddress | null>(orderReturnPageData.pickupAddress);
   const [showAddressSelectLayer, setShowAddressSelectLayer] = useState<boolean>(false);
-  const [showAddressRegisterLayer, setShowAddressRegisterLayer] = useState<boolean>(false);
-  const [addressRegisterMode, setAddressRegisterMode] = useState<"create" | "edit">("create");
-  const [editingAddress, setEditingAddress] = useState<ShopOrderAddress | null>(null);
   const [selectionMap, setSelectionMap] = useState<ShopMypageOrderReturnSelectionMap>(() =>
     createInitialShopMypageOrderReturnSelectionMap(order, returnTarget.initialOrdDtlNo),
   );
   const [itemReasonMap, setItemReasonMap] = useState<ShopMypageOrderItemReasonMap>(() =>
     createInitialShopMypageOrderItemReasonMap(order),
   );
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // 반품 환불 예정 금액과 화면 표시용 컬럼을 계산합니다.
   const returnPreviewResult = useMemo(
@@ -260,9 +333,24 @@ export default function ShopMypageOrderReturnSection({
     () => createReturnPreviewAmountColumnList(returnPreviewResult.returnPreviewSummary),
     [returnPreviewResult.returnPreviewSummary],
   );
+  const visibleReturnOrder = useMemo(() => {
+    if (!order) {
+      return null;
+    }
+
+    // 진행 중 반품/교환 클레임 상품은 반품신청 화면 상단 목록에서 제외합니다.
+    return {
+      ...order,
+      detailList: order.detailList.filter((detailItem) => !hasShopMypageOrderBlockedClaim(detailItem)),
+    };
+  }, [order]);
   const returnableDetailList = useMemo(
     () => (order?.detailList ?? []).filter((detailItem) => isShopMypageOrderReturnable(detailItem)),
     [order?.detailList],
+  );
+  const returnItemList = useMemo(
+    () => buildShopMypageOrderReturnSubmitItemList(order?.detailList ?? [], selectionMap, itemReasonMap),
+    [itemReasonMap, order?.detailList, selectionMap],
   );
   const allSelected = useMemo(
     () =>
@@ -272,7 +360,13 @@ export default function ShopMypageOrderReturnSection({
       ),
     [returnableDetailList, selectionMap],
   );
+  const pickupAddressValidationMessage = useMemo(
+    () => resolveShopMypageOrderReturnPickupAddressValidationMessage(selectedPickupAddress),
+    [selectedPickupAddress],
+  );
   const infoMessage = returnPreviewResult.submitBlockMessage;
+  const submitMessage = pickupAddressValidationMessage !== "" ? pickupAddressValidationMessage : infoMessage;
+  const submitDisabled = isSubmitting || pickupAddressValidationMessage !== "" || !returnPreviewResult.canSubmit;
 
   // 주문 정보가 없으면 빈 화면을 반환합니다.
   if (!order) {
@@ -289,56 +383,10 @@ export default function ShopMypageOrderReturnSection({
     setShowAddressSelectLayer(false);
   };
 
-  // 회수지 등록 레이어를 엽니다.
-  const handleOpenAddressRegisterLayer = (): void => {
-    setShowAddressSelectLayer(false);
-    setAddressRegisterMode("create");
-    setEditingAddress(null);
-    setShowAddressRegisterLayer(true);
-  };
-
-  // 회수지 수정 레이어를 엽니다.
-  const handleOpenAddressEditLayer = (address: ShopOrderAddress): void => {
-    setShowAddressSelectLayer(false);
-    setAddressRegisterMode("edit");
-    setEditingAddress(address);
-    setShowAddressRegisterLayer(true);
-  };
-
-  // 회수지 등록 레이어를 닫습니다.
-  const handleCloseAddressRegisterLayer = (): void => {
-    setShowAddressRegisterLayer(false);
-    setAddressRegisterMode("create");
-    setEditingAddress(null);
-  };
-
   // 선택한 회수지를 현재 화면 상태에 반영합니다.
   const handleSelectPickupAddress = (address: ShopOrderAddress): void => {
     setSelectedPickupAddress(address);
     setShowAddressSelectLayer(false);
-  };
-
-  // 회수지 등록/수정 성공 결과를 현재 화면 상태에 반영합니다.
-  const handleAddressRegisterSuccess = (result: ShopOrderAddressSaveResponse): void => {
-    const currentSelectedAddressNm = selectedPickupAddress?.addressNm ?? "";
-    const isEditingSelectedPickupAddress = editingAddress !== null && currentSelectedAddressNm === editingAddress.addressNm;
-    const preservedSelectedPickupAddress =
-      currentSelectedAddressNm === ""
-        ? null
-        : result.addressList.find((address) => address.addressNm === currentSelectedAddressNm) ??
-          (isEditingSelectedPickupAddress ? null : selectedPickupAddress);
-    const nextSelectedPickupAddress =
-      addressRegisterMode === "edit"
-        ? isEditingSelectedPickupAddress
-          ? result.savedAddress ?? result.defaultAddress ?? preservedSelectedPickupAddress
-          : preservedSelectedPickupAddress ?? result.savedAddress ?? result.defaultAddress ?? null
-        : result.savedAddress ?? result.defaultAddress ?? preservedSelectedPickupAddress;
-    setAddressList(result.addressList);
-    setSelectedPickupAddress(nextSelectedPickupAddress);
-    setShowAddressRegisterLayer(false);
-    setShowAddressSelectLayer(false);
-    setAddressRegisterMode("create");
-    setEditingAddress(null);
   };
 
   // 전체선택 체크박스 변경 시 반품 가능 상품만 일괄 선택/해제합니다.
@@ -417,9 +465,55 @@ export default function ShopMypageOrderReturnSection({
     }));
   };
 
-  // 반품신청 버튼 클릭 시 저장 없이 추후 오픈 안내만 노출합니다.
-  const handleSubmit = (): void => {
-    window.alert("반품 신청 기능은 추후 오픈 예정입니다.");
+  // 반품신청 버튼 클릭 시 서버 재검증과 실제 반품신청 저장을 요청합니다.
+  const handleSubmit = async (): Promise<void> => {
+    if (submitDisabled) {
+      window.alert(submitMessage || "반품 신청 정보를 확인해주세요.");
+      return;
+    }
+    if (returnItemList.length < 1) {
+      window.alert("반품할 상품을 선택해주세요.");
+      return;
+    }
+    if (!selectedPickupAddress) {
+      window.alert("회수지를 선택해주세요.");
+      return;
+    }
+
+    const requestBody: ShopMypageOrderReturnSubmitRequest = {
+      ordNo: order.ordNo,
+      returnItemList,
+      previewAmount: {
+        expectedRefundAmt: returnPreviewResult.returnPreviewSummary.expectedRefundAmt,
+        paidGoodsAmt: returnPreviewResult.returnPreviewSummary.paidGoodsAmt,
+        benefitAmt: returnPreviewResult.returnPreviewSummary.benefitAmt,
+        shippingAdjustmentAmt: returnPreviewResult.returnPreviewSummary.shippingAdjustmentAmt,
+        totalPointRefundAmt: returnPreviewResult.returnPreviewSummary.totalPointRefundAmt,
+        deliveryCouponRefundAmt: returnPreviewResult.returnPreviewSummary.deliveryCouponRefundAmt,
+      },
+      pickupAddress: buildShopMypageOrderReturnSubmitPickupAddress(selectedPickupAddress),
+    };
+
+    // 현재 화면 계산값을 포함해 주문반품 API를 호출하고 실패 메시지는 alert로 노출합니다.
+    setIsSubmitting(true);
+    try {
+      const result = await requestShopClientApi<ShopMypageOrderReturnSubmitResponse>("/api/shop/mypage/order/return", {
+        method: "POST",
+        body: requestBody,
+      });
+      if (!result.ok || !result.data) {
+        window.alert(result.message || (result.status === 409 ? "환불 금액이 상이합니다." : "반품 신청 처리에 실패했습니다."));
+        return;
+      }
+
+      // 저장이 완료되면 주문 상세 화면으로 이동합니다.
+      window.alert("반품 신청이 완료되었습니다.");
+      router.replace(`/mypage/order/${result.data.ordNo}`);
+    } catch {
+      window.alert("반품 신청 처리에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -436,7 +530,7 @@ export default function ShopMypageOrderReturnSection({
       </div>
 
       <ShopMypageOrderReturnItemList
-        order={order}
+        order={visibleReturnOrder ?? order}
         selectionMap={selectionMap}
         itemReasonMap={itemReasonMap}
         reasonList={reasonList}
@@ -480,7 +574,9 @@ export default function ShopMypageOrderReturnSection({
                 <span className={styles.returnPickupBadge}>기본 회수지</span>
               ) : null}
             </div>
-            <p className={styles.returnPickupMeta}>{formatPickupContactLine(selectedPickupAddress)}</p>
+            <p className={styles.returnPickupMeta}>
+              {formatPickupContactLine(selectedPickupAddress.rsvNm, orderReturnPageData.customerPhoneNumber)}
+            </p>
             <p className={styles.returnPickupMain}>{formatPickupAddressLine(selectedPickupAddress)}</p>
             <p className={styles.returnPickupDetail}>{selectedPickupAddress.detailAddress || "-"}</p>
           </div>
@@ -498,9 +594,9 @@ export default function ShopMypageOrderReturnSection({
       </section>
 
       <div className={styles.cancelActionBar}>
-        {infoMessage !== "" ? <p className={styles.cancelValidationMessage}>{infoMessage}</p> : null}
+        {submitMessage !== "" ? <p className={styles.cancelValidationMessage}>{submitMessage}</p> : null}
         <div className={styles.cancelActionButtonGroup}>
-          <button type="button" className={styles.cancelSubmitButton} onClick={handleSubmit}>
+          <button type="button" className={styles.cancelSubmitButton} disabled={submitDisabled} onClick={handleSubmit}>
             반품신청
           </button>
           <Link href="/mypage/order" className={styles.cancelListButton}>
@@ -514,18 +610,12 @@ export default function ShopMypageOrderReturnSection({
           addressList={addressList}
           selectedAddressNm={selectedPickupAddress?.addressNm ?? ""}
           onSelect={handleSelectPickupAddress}
-          onEdit={handleOpenAddressEditLayer}
-          onOpenRegister={handleOpenAddressRegisterLayer}
           onClose={handleCloseAddressSelectLayer}
-        />
-      ) : null}
-
-      {showAddressRegisterLayer ? (
-        <ShopOrderAddressRegisterLayer
-          mode={addressRegisterMode}
-          initialAddress={editingAddress}
-          onSuccess={handleAddressRegisterSuccess}
-          onClose={handleCloseAddressRegisterLayer}
+          showEditButton={false}
+          showRegisterButton={false}
+          resolveContactText={(address) =>
+            formatPickupContactLine(address.rsvNm, orderReturnPageData.customerPhoneNumber)
+          }
         />
       ) : null}
     </section>
