@@ -18,6 +18,12 @@ import type {
   ShopMypageOrderReturnFeeContext,
   ShopMypageOrderStatusSummary,
   ShopMypageOwnedCouponItem,
+  ShopMypageReturnDetailPageResponse,
+  ShopMypageReturnHistoryDetailItem,
+  ShopMypageReturnHistoryItem,
+  ShopMypageReturnHistoryPageResponse,
+  ShopMypageReturnPickupAddress,
+  ShopMypageReturnPreviewAmount,
   ShopMypageWishPageResponse,
   ShopMypagePointItem,
   ShopMypagePointPageResponse,
@@ -418,6 +424,22 @@ function buildShopMypageCancelHistoryPagePath(pageNo: number, startDate: string,
   return `/api/shop/mypage/order/cancel/history?${queryParams.toString()}`;
 }
 
+// 마이페이지 반품상세 API 경로를 생성합니다.
+function buildShopMypageReturnDetailPath(clmNo: string): string {
+  const queryParams = new URLSearchParams();
+  queryParams.set("clmNo", clmNo);
+  return `/api/shop/mypage/order/return/detail?${queryParams.toString()}`;
+}
+
+// 마이페이지 반품내역 API 경로를 생성합니다.
+function buildShopMypageReturnHistoryPagePath(pageNo: number, startDate: string, endDate: string): string {
+  const queryParams = new URLSearchParams();
+  queryParams.set("pageNo", String(resolvePageNo(pageNo)));
+  queryParams.set("startDate", normalizeString(startDate));
+  queryParams.set("endDate", normalizeString(endDate));
+  return `/api/shop/mypage/order/return/history?${queryParams.toString()}`;
+}
+
 // 마이페이지 위시리스트 페이지 SSR 데이터를 조회합니다.
 export async function fetchShopMypageWishPageServerData(
   pageNo: number,
@@ -760,6 +782,176 @@ export async function fetchShopMypageCancelDetailServerData(
   }
 
   return { cancelItem: normalizeShopMypageCancelHistoryItem(response) };
+}
+
+// 마이페이지 반품내역 기본 응답값을 생성합니다.
+function createDefaultShopMypageReturnHistoryPageResponse(): ShopMypageReturnHistoryPageResponse {
+  return {
+    returnList: [],
+    returnCount: 0,
+    pageNo: 1,
+    pageSize: 5,
+    totalPageCount: 0,
+    startDate: "",
+    endDate: "",
+  };
+}
+
+// 마이페이지 반품상세 환불 예정 금액 기본 응답값을 생성합니다.
+function createDefaultShopMypageReturnPreviewAmount(): ShopMypageReturnPreviewAmount {
+  return {
+    totalSupplyAmt: 0,
+    totalGoodsDiscountAmt: 0,
+    totalGoodsCouponDiscountAmt: 0,
+    totalCartCouponDiscountAmt: 0,
+    deliveryCouponRefundAmt: 0,
+    totalPointRefundAmt: 0,
+    paidGoodsAmt: 0,
+    benefitAmt: 0,
+    shippingAdjustmentAmt: 0,
+    expectedRefundAmt: 0,
+  };
+}
+
+// 마이페이지 반품내역 상품 상세 아이템을 기본값과 함께 정규화합니다.
+function normalizeShopMypageReturnHistoryDetailItem(rawItem: unknown): ShopMypageReturnHistoryDetailItem {
+  const source = (rawItem ?? {}) as Partial<ShopMypageReturnHistoryDetailItem>;
+  return {
+    clmNo: normalizeString(source.clmNo),
+    ordDtlNo: normalizeNonNegativeNumber(source.ordDtlNo),
+    goodsId: normalizeString(source.goodsId),
+    goodsNm: normalizeString(source.goodsNm),
+    sizeId: normalizeString(source.sizeId),
+    qty: normalizeNonNegativeNumber(source.qty),
+    saleAmt: normalizeNonNegativeNumber(source.saleAmt),
+    addAmt: normalizeNonNegativeNumber(source.addAmt),
+    chgDtlStatCd: normalizeString(source.chgDtlStatCd),
+    chgDtlStatNm: normalizeString(source.chgDtlStatNm),
+    chgReasonCd: normalizeString(source.chgReasonCd),
+    chgReasonNm: normalizeString(source.chgReasonNm),
+    chgReasonDtl: normalizeString(source.chgReasonDtl),
+    imgPath: normalizeString(source.imgPath),
+    imgUrl: normalizeString(source.imgUrl),
+  };
+}
+
+// 마이페이지 반품내역 클레임 아이템을 기본값과 함께 정규화합니다.
+function normalizeShopMypageReturnHistoryItem(rawItem: unknown): ShopMypageReturnHistoryItem {
+  const source = (rawItem ?? {}) as Partial<ShopMypageReturnHistoryItem>;
+  return {
+    clmNo: normalizeString(source.clmNo),
+    ordNo: normalizeString(source.ordNo),
+    chgDt: normalizeString(source.chgDt),
+    detailList: Array.isArray(source.detailList)
+      ? source.detailList.map((item) => normalizeShopMypageReturnHistoryDetailItem(item))
+      : [],
+  };
+}
+
+// 마이페이지 반품상세 환불 예정 금액 요약을 기본값과 함께 정규화합니다.
+function normalizeShopMypageReturnPreviewAmount(rawValue: unknown): ShopMypageReturnPreviewAmount {
+  const source = (rawValue ?? {}) as Partial<ShopMypageReturnPreviewAmount>;
+  return {
+    totalSupplyAmt: normalizeNonNegativeNumber(source.totalSupplyAmt),
+    totalGoodsDiscountAmt: normalizeNonNegativeNumber(source.totalGoodsDiscountAmt),
+    totalGoodsCouponDiscountAmt: normalizeNonNegativeNumber(source.totalGoodsCouponDiscountAmt),
+    totalCartCouponDiscountAmt: normalizeNonNegativeNumber(source.totalCartCouponDiscountAmt),
+    deliveryCouponRefundAmt: normalizeNonNegativeNumber(source.deliveryCouponRefundAmt),
+    totalPointRefundAmt: normalizeNonNegativeNumber(source.totalPointRefundAmt),
+    paidGoodsAmt: normalizeNonNegativeNumber(source.paidGoodsAmt),
+    benefitAmt: normalizeNonNegativeNumber(source.benefitAmt),
+    shippingAdjustmentAmt: typeof source.shippingAdjustmentAmt === "number" && Number.isFinite(source.shippingAdjustmentAmt)
+      ? Math.floor(source.shippingAdjustmentAmt)
+      : 0,
+    expectedRefundAmt: typeof source.expectedRefundAmt === "number" && Number.isFinite(source.expectedRefundAmt)
+      ? Math.floor(source.expectedRefundAmt)
+      : 0,
+  };
+}
+
+// 마이페이지 반품상세 회수지를 기본값과 함께 정규화합니다.
+function normalizeShopMypageReturnPickupAddress(rawValue: unknown): ShopMypageReturnPickupAddress {
+  const source = (rawValue ?? {}) as Partial<ShopMypageReturnPickupAddress>;
+  return {
+    rsvNm: normalizeString(source.rsvNm),
+    postNo: normalizeString(source.postNo),
+    baseAddress: normalizeString(source.baseAddress),
+    detailAddress: normalizeString(source.detailAddress),
+  };
+}
+
+// 마이페이지 반품내역 페이지 SSR 데이터를 조회합니다.
+export async function fetchShopMypageReturnHistoryPageServerData(
+  pageNo: number,
+  startDate: string,
+  endDate: string,
+  cookieHeader: string,
+): Promise<ShopMypageReturnHistoryPageResponse> {
+  // 반품내역 API 경로를 생성해 응답을 조회합니다.
+  const path = buildShopMypageReturnHistoryPagePath(pageNo, startDate, endDate);
+  const requestInit = buildRequestInitFromCookie(cookieHeader);
+  const response = await readShopServerApiResponse<ShopMypageReturnHistoryPageResponse>(path, requestInit);
+  const defaultResponse = createDefaultShopMypageReturnHistoryPageResponse();
+
+  // 응답 유효성을 확인한 뒤 기본값을 반환합니다.
+  if (!response) {
+    return {
+      ...defaultResponse,
+      startDate: normalizeString(startDate),
+      endDate: normalizeString(endDate),
+    };
+  }
+
+  return {
+    returnList: Array.isArray(response.returnList)
+      ? response.returnList.map((item) => normalizeShopMypageReturnHistoryItem(item))
+      : defaultResponse.returnList,
+    returnCount: normalizeNonNegativeNumber(response.returnCount),
+    pageNo: typeof response.pageNo === "number" ? resolvePageNo(response.pageNo) : defaultResponse.pageNo,
+    pageSize:
+      typeof response.pageSize === "number" && response.pageSize > 0
+        ? Math.floor(response.pageSize)
+        : defaultResponse.pageSize,
+    totalPageCount:
+      typeof response.totalPageCount === "number" && response.totalPageCount >= 0
+        ? Math.floor(response.totalPageCount)
+        : defaultResponse.totalPageCount,
+    startDate: normalizeString(response.startDate || startDate),
+    endDate: normalizeString(response.endDate || endDate),
+  };
+}
+
+// 마이페이지 반품상세 SSR 데이터를 클레임번호로 조회합니다.
+export async function fetchShopMypageReturnDetailServerData(
+  clmNo: string,
+  cookieHeader: string,
+): Promise<ShopMypageReturnDetailPageResponse> {
+  // 반품상세 API 경로를 생성해 응답을 조회합니다.
+  const path = buildShopMypageReturnDetailPath(clmNo);
+  const requestInit = buildRequestInitFromCookie(cookieHeader);
+  const response = await readShopServerApiResponse<ShopMypageReturnDetailPageResponse>(path, requestInit);
+  const defaultPreviewAmount = createDefaultShopMypageReturnPreviewAmount();
+  // 응답이 없거나 클레임번호가 없으면 기본값을 반환합니다.
+  if (!response || !response.returnItem || !response.returnItem.clmNo) {
+    return {
+      returnItem: null,
+      previewAmount: defaultPreviewAmount,
+      pickupAddress: null,
+      customerPhoneNumber: "",
+    };
+  }
+
+  return {
+    returnItem: normalizeShopMypageReturnHistoryItem(response.returnItem),
+    previewAmount: response.previewAmount
+      ? normalizeShopMypageReturnPreviewAmount(response.previewAmount)
+      : defaultPreviewAmount,
+    pickupAddress:
+      response.pickupAddress && typeof response.pickupAddress === "object"
+        ? normalizeShopMypageReturnPickupAddress(response.pickupAddress)
+        : null,
+    customerPhoneNumber: normalizeString(response.customerPhoneNumber),
+  };
 }
 
 // 마이페이지 포인트 내역 기본 응답값을 생성합니다.

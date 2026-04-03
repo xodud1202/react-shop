@@ -277,6 +277,74 @@ export interface ShopMypageCancelDetailPageResponse {
   cancelItem: ShopMypageCancelHistoryItem | null;
 }
 
+// 마이페이지 반품내역 상품 상세 아이템 타입입니다.
+export interface ShopMypageReturnHistoryDetailItem {
+  clmNo: string;
+  ordDtlNo: number;
+  goodsId: string;
+  goodsNm: string;
+  sizeId: string;
+  qty: number;
+  saleAmt: number;
+  addAmt: number;
+  chgDtlStatCd: string;
+  chgDtlStatNm: string;
+  chgReasonCd: string;
+  chgReasonNm: string;
+  chgReasonDtl: string;
+  imgPath: string;
+  imgUrl: string;
+}
+
+// 마이페이지 반품내역 클레임 단위 아이템 타입입니다.
+export interface ShopMypageReturnHistoryItem {
+  clmNo: string;
+  ordNo: string;
+  chgDt: string;
+  detailList: ShopMypageReturnHistoryDetailItem[];
+}
+
+// 마이페이지 반품내역 페이지 응답 타입입니다.
+export interface ShopMypageReturnHistoryPageResponse {
+  returnList: ShopMypageReturnHistoryItem[];
+  returnCount: number;
+  pageNo: number;
+  pageSize: number;
+  totalPageCount: number;
+  startDate: string;
+  endDate: string;
+}
+
+// 마이페이지 반품상세 환불 예정 금액 요약 타입입니다.
+export interface ShopMypageReturnPreviewAmount {
+  totalSupplyAmt: number;
+  totalGoodsDiscountAmt: number;
+  totalGoodsCouponDiscountAmt: number;
+  totalCartCouponDiscountAmt: number;
+  deliveryCouponRefundAmt: number;
+  totalPointRefundAmt: number;
+  paidGoodsAmt: number;
+  benefitAmt: number;
+  shippingAdjustmentAmt: number;
+  expectedRefundAmt: number;
+}
+
+// 마이페이지 반품상세 회수지 타입입니다.
+export interface ShopMypageReturnPickupAddress {
+  rsvNm: string;
+  postNo: string;
+  baseAddress: string;
+  detailAddress: string;
+}
+
+// 마이페이지 반품상세 페이지 응답 타입입니다.
+export interface ShopMypageReturnDetailPageResponse {
+  returnItem: ShopMypageReturnHistoryItem | null;
+  previewAmount: ShopMypageReturnPreviewAmount;
+  pickupAddress: ShopMypageReturnPickupAddress | null;
+  customerPhoneNumber: string;
+}
+
 // 마이페이지 쿠폰함 보유 쿠폰 아이템 타입입니다.
 export interface ShopMypageOwnedCouponItem {
   custCpnNo: number;

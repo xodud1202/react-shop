@@ -19,7 +19,7 @@ const SHOP_MYPAGE_LNB_MENU_LIST: ShopMypageLnbMenuItem[] = [
       { label: "주문내역", href: "/mypage/order" },
       { label: "취소내역", href: "/mypage/cancel" },
       { label: "교환내역", href: "/mypage/orders/exchange", disabled: true },
-      { label: "반품내역", href: "/mypage/orders/return", disabled: true },
+      { label: "반품내역", href: "/mypage/return" },
     ],
   },
   { label: "리뷰", href: "/mypage/review", disabled: true },
