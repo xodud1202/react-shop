@@ -1,4 +1,8 @@
 import type { ShopMypageOrderDetailItem, ShopMypageOrderStatusSummary } from "@/domains/mypage/types";
+import {
+  isShopMypageOrderReturnWithdrawable,
+  SHOP_MYPAGE_ORDER_ACTION_RETURN_WITHDRAW,
+} from "@/domains/mypage/utils/shopMypageOrderReturnWithdraw";
 
 export interface ShopMypageOrderStatusCard {
   key: string;
@@ -122,6 +126,10 @@ export function resolveShopMypageOrderDisplayStatusName(detailItem: ShopMypageOr
 
 // 주문상세 행 기준 실제 노출할 액션 버튼 목록을 반환합니다.
 export function resolveShopMypageOrderVisibleActionLabelList(detailItem: ShopMypageOrderDetailItem): string[] {
+  if (detailItem.activeReturnClaimYn && isShopMypageOrderReturnWithdrawable(detailItem)) {
+    return [SHOP_MYPAGE_ORDER_ACTION_RETURN_WITHDRAW, "1:1문의"];
+  }
+
   return resolveShopMypageOrderActionLabelList(detailItem.ordDtlStatCd).filter((actionLabel) => {
     if (hasShopMypageOrderActiveClaim(detailItem)) {
       return actionLabel === "1:1문의";

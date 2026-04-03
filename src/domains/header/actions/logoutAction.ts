@@ -10,7 +10,7 @@ interface ShopLogoutActionResponse {
   message: string;
 }
 
-const SHOP_AUTH_COOKIE_NAME_LIST = ["cust_no", "cust_grade_cd"] as const;
+const SHOP_AUTH_COOKIE_NAME_LIST = ["cust_no", "cust_nm", "cust_grade_cd"] as const;
 
 // 서버 액션으로 쇼핑몰 로그아웃을 처리합니다.
 export async function submitShopLogoutAction(): Promise<ShopLogoutActionResponse> {

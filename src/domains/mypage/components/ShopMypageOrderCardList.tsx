@@ -22,6 +22,11 @@ import {
   resolveShopMypageOrderStatusActionSuccessMessage,
   resolveShopMypageOrderVisibleActionLabelList,
 } from "@/domains/mypage/utils/shopMypageOrder";
+import {
+  isShopMypageOrderReturnWithdrawActionLabel,
+  requestShopMypageOrderReturnWithdraw,
+  resolveShopMypageOrderReturnWithdrawSuccessMessage,
+} from "@/domains/mypage/utils/shopMypageOrderReturnWithdraw";
 import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import styles from "./ShopMypageOrderSection.module.css";
 
@@ -77,6 +82,28 @@ export default function ShopMypageOrderCardList({
       }
 
       window.alert(resolveShopMypageOrderStatusActionSuccessMessage(actionLabel));
+      router.refresh();
+    } catch {
+      window.alert(`${actionLabel} 처리에 실패했습니다.`);
+    } finally {
+      setProcessingActionKey("");
+    }
+  };
+
+  // 반품 철회 액션을 호출하고 현재 화면 데이터를 새로고침합니다.
+  const handleReturnWithdrawAction = async (ordNo: string, ordDtlNo: number, actionLabel: string): Promise<void> => {
+    const actionKey = `${ordNo}-${ordDtlNo}-${actionLabel}`;
+
+    // 동일 액션 중복 클릭을 막고 서버 검증 결과를 사용자에게 즉시 노출합니다.
+    setProcessingActionKey(actionKey);
+    try {
+      const result = await requestShopMypageOrderReturnWithdraw(ordNo, ordDtlNo);
+      if (!result.ok || !result.data) {
+        window.alert(result.message || `${actionLabel} 처리에 실패했습니다.`);
+        return;
+      }
+
+      window.alert(resolveShopMypageOrderReturnWithdrawSuccessMessage());
       router.refresh();
     } catch {
       window.alert(`${actionLabel} 처리에 실패했습니다.`);
@@ -179,6 +206,21 @@ export default function ShopMypageOrderCardList({
                               disabled={processingActionKey !== ""}
                               onClick={() => {
                                 void handleStatusAction(detailItem.ordNo, detailItem.ordDtlNo, actionLabel);
+                              }}
+                            >
+                              {isProcessingAction ? `${actionLabel} 처리중...` : actionLabel}
+                            </button>
+                          );
+                        }
+                        if (isShopMypageOrderReturnWithdrawActionLabel(actionLabel)) {
+                          return (
+                            <button
+                              key={actionKey}
+                              type="button"
+                              className={styles.actionButton}
+                              disabled={processingActionKey !== ""}
+                              onClick={() => {
+                                void handleReturnWithdrawAction(detailItem.ordNo, detailItem.ordDtlNo, actionLabel);
                               }}
                             >
                               {isProcessingAction ? `${actionLabel} 처리중...` : actionLabel}

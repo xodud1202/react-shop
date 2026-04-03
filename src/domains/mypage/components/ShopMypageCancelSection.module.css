@@ -206,6 +206,10 @@
   border-bottom: 1px solid #f1f5f9;
 }
 
+.withdrawableDetailRow {
+  grid-template-columns: 104px minmax(0, 1fr) 180px;
+}
+
 .detailRow:last-child {
   border-bottom: none;
 }
@@ -399,8 +403,48 @@
   border-bottom: 1px solid #f1f5f9;
 }
 
+.claimActionDetailRow {
+  grid-template-columns: 104px minmax(0, 1fr) 180px;
+}
+
 .cancelDetailItemRow:last-child {
   border-bottom: none;
+}
+
+.actionArea {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.actionButton {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #111827;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.noActionLabel {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .cancelNoticeBox {
@@ -517,6 +561,37 @@
   .detailRow {
     padding: 16px;
   }
+
+  .withdrawableDetailRow,
+  .claimActionDetailRow {
+    grid-template-columns: 88px minmax(0, 1fr);
+    grid-template-areas:
+      "thumbnail content"
+      "actions actions";
+  }
+
+  .withdrawableDetailRow .thumbnailWrap,
+  .claimActionDetailRow .thumbnailWrap {
+    grid-area: thumbnail;
+    width: 88px;
+    height: 88px;
+  }
+
+  .withdrawableDetailRow .detailContent,
+  .claimActionDetailRow .detailContent {
+    grid-area: content;
+  }
+
+  .actionArea {
+    grid-area: actions;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .actionButton {
+    width: auto;
+    min-width: 96px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -545,5 +620,13 @@
 
   .metaInfoRow {
     grid-template-columns: 1fr;
+  }
+
+  .actionArea {
+    flex-direction: column;
+  }
+
+  .actionButton {
+    width: 100%;
   }
 }

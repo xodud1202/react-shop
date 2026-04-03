@@ -1,9 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ShopMypageReturnHistoryItem } from "@/domains/mypage/types";
 import { formatShopMypageOrderCount, formatShopMypageOrderPrice } from "@/domains/mypage/utils/shopMypageOrder";
+import {
+  isShopMypageReturnHistoryWithdrawable,
+  requestShopMypageOrderReturnWithdraw,
+  resolveShopMypageOrderReturnWithdrawSuccessMessage,
+} from "@/domains/mypage/utils/shopMypageOrderReturnWithdraw";
 import styles from "./ShopMypageCancelSection.module.css";
 
 interface ShopMypageReturnCardListProps {
@@ -38,10 +45,35 @@ function resolveReturnDetailAmount(saleAmt: number, addAmt: number, qty: number)
 
 // 반품내역 카드 목록을 렌더링합니다.
 export default function ShopMypageReturnCardList({ returnList }: ShopMypageReturnCardListProps) {
+  const router = useRouter();
+  const [processingActionKey, setProcessingActionKey] = useState<string>("");
+
   // 빈 목록이면 empty 상태를 반환합니다.
   if (returnList.length === 0) {
     return <div className={styles.emptyState}>조회된 반품내역이 없습니다.</div>;
   }
+
+  // 반품내역 상품 기준 반품 철회 액션을 호출하고 현재 화면을 새로고침합니다.
+  const handleReturnWithdrawAction = async (ordNo: string, clmNo: string, ordDtlNo: number): Promise<void> => {
+    const actionKey = `${clmNo}-${ordDtlNo}-반품 철회`;
+
+    // 동일 액션 중복 클릭을 막고 서버 검증 결과를 사용자에게 즉시 노출합니다.
+    setProcessingActionKey(actionKey);
+    try {
+      const result = await requestShopMypageOrderReturnWithdraw(ordNo, ordDtlNo);
+      if (!result.ok || !result.data) {
+        window.alert(result.message || "반품 철회 처리에 실패했습니다.");
+        return;
+      }
+
+      window.alert(resolveShopMypageOrderReturnWithdrawSuccessMessage());
+      router.refresh();
+    } catch {
+      window.alert("반품 철회 처리에 실패했습니다.");
+    } finally {
+      setProcessingActionKey("");
+    }
+  };
 
   return (
     <div className={styles.cancelList}>
@@ -57,63 +89,88 @@ export default function ShopMypageReturnCardList({ returnList }: ShopMypageRetur
           </header>
 
           <ul className={styles.detailList}>
-            {returnItem.detailList.map((detailItem) => (
-              <li key={`${returnItem.clmNo}-${detailItem.ordDtlNo}`} className={styles.detailRow}>
-                <div className={styles.thumbnailWrap}>
-                  {detailItem.imgUrl.trim() !== "" ? (
-                    <Image
-                      src={detailItem.imgUrl}
-                      alt={detailItem.goodsNm}
-                      fill
-                      sizes="104px"
-                      className={styles.thumbnailImage}
-                    />
-                  ) : (
-                    <span className={styles.thumbnailFallback}>이미지 없음</span>
-                  )}
-                </div>
-
-                <div className={styles.detailContent}>
-                  <p className={styles.goodsName}>{detailItem.goodsNm}</p>
-                  <div className={styles.metaGrid}>
-                    {/* 주문내역과 동일한 2행 2열 메타 그리드에 반품 정보를 표시합니다. */}
-                    <div className={styles.metaInfoRow}>
-                      <div className={styles.metaInfoItem}>
-                        <span className={styles.metaLabel}>사이즈</span>
-                        <span className={styles.metaValue}>{detailItem.sizeId || "-"}</span>
-                      </div>
-                      <div className={styles.metaInfoItem}>
-                        <span className={styles.metaLabel}>반품상태</span>
-                        <span className={styles.metaValue}>{detailItem.chgDtlStatNm || "-"}</span>
-                      </div>
-                    </div>
-                    <div className={styles.metaInfoRow}>
-                      <div className={styles.metaInfoItem}>
-                        <span className={styles.metaLabel}>반품수량</span>
-                        <span className={styles.metaValue}>{formatShopMypageOrderCount(detailItem.qty)}개</span>
-                      </div>
-                      <div className={styles.metaInfoItem}>
-                        <span className={styles.metaLabel}>상품금액</span>
-                        <span className={`${styles.metaValue} ${styles.metaValueStrong}`}>
-                          {formatShopMypageOrderPrice(resolveReturnDetailAmount(detailItem.saleAmt, detailItem.addAmt, detailItem.qty))}원
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 반품 사유 박스 */} 
-                    {detailItem.chgReasonNm.trim() !== "" ? (
-                      <div className={styles.cancelReasonBox}>
-                        <p className={styles.cancelReasonTitle}>반품 사유</p>
-                        <p className={styles.cancelReasonText}>
-                          {detailItem.chgReasonNm}
-                          {detailItem.chgReasonDtl.trim() !== "" ? ` · ${detailItem.chgReasonDtl}` : ""}
-                        </p>
-                      </div>
-                    ) : null}
+            {returnItem.detailList.map((detailItem) => {
+              const actionKey = `${returnItem.clmNo}-${detailItem.ordDtlNo}-반품 철회`;
+              const isProcessingAction = processingActionKey === actionKey;
+              const withdrawableYn = isShopMypageReturnHistoryWithdrawable(detailItem);
+              return (
+                <li
+                  key={`${returnItem.clmNo}-${detailItem.ordDtlNo}`}
+                  className={`${styles.detailRow} ${styles.withdrawableDetailRow}`}
+                >
+                  <div className={styles.thumbnailWrap}>
+                    {detailItem.imgUrl.trim() !== "" ? (
+                      <Image
+                        src={detailItem.imgUrl}
+                        alt={detailItem.goodsNm}
+                        fill
+                        sizes="104px"
+                        className={styles.thumbnailImage}
+                      />
+                    ) : (
+                      <span className={styles.thumbnailFallback}>이미지 없음</span>
+                    )}
                   </div>
-                </div>
-              </li>
-            ))}
+
+                  <div className={styles.detailContent}>
+                    <p className={styles.goodsName}>{detailItem.goodsNm}</p>
+                    <div className={styles.metaGrid}>
+                      {/* 주문내역과 동일한 2행 2열 메타 그리드에 반품 정보를 표시합니다. */}
+                      <div className={styles.metaInfoRow}>
+                        <div className={styles.metaInfoItem}>
+                          <span className={styles.metaLabel}>사이즈</span>
+                          <span className={styles.metaValue}>{detailItem.sizeId || "-"}</span>
+                        </div>
+                        <div className={styles.metaInfoItem}>
+                          <span className={styles.metaLabel}>반품상태</span>
+                          <span className={styles.metaValue}>{detailItem.chgDtlStatNm || "-"}</span>
+                        </div>
+                      </div>
+                      <div className={styles.metaInfoRow}>
+                        <div className={styles.metaInfoItem}>
+                          <span className={styles.metaLabel}>반품수량</span>
+                          <span className={styles.metaValue}>{formatShopMypageOrderCount(detailItem.qty)}개</span>
+                        </div>
+                        <div className={styles.metaInfoItem}>
+                          <span className={styles.metaLabel}>상품금액</span>
+                          <span className={`${styles.metaValue} ${styles.metaValueStrong}`}>
+                            {formatShopMypageOrderPrice(resolveReturnDetailAmount(detailItem.saleAmt, detailItem.addAmt, detailItem.qty))}원
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 반품 사유 박스 */}
+                      {detailItem.chgReasonNm.trim() !== "" ? (
+                        <div className={styles.cancelReasonBox}>
+                          <p className={styles.cancelReasonTitle}>반품 사유</p>
+                          <p className={styles.cancelReasonText}>
+                            {detailItem.chgReasonNm}
+                            {detailItem.chgReasonDtl.trim() !== "" ? ` · ${detailItem.chgReasonDtl}` : ""}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className={styles.actionArea}>
+                    {withdrawableYn ? (
+                      <button
+                        type="button"
+                        className={styles.actionButton}
+                        disabled={processingActionKey !== ""}
+                        onClick={() => {
+                          void handleReturnWithdrawAction(returnItem.ordNo, returnItem.clmNo, detailItem.ordDtlNo);
+                        }}
+                      >
+                        {isProcessingAction ? "반품 철회 처리중..." : "반품 철회"}
+                      </button>
+                    ) : (
+                      <span className={styles.noActionLabel}>-</span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </article>
       ))}
