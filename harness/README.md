@@ -9,6 +9,7 @@
 - 기본 브라우저 직접 오픈 방식으로 확인한다.
 - 포트 기준 URL은 `http://127.0.0.1:3014` 또는 `http://localhost:3014`다.
 - 진입, 조회, 등록, 수정, 검증 시나리오는 공통 체크리스트 `../../AGENTS/harness/checklists/frontend-screen-change.md`를 따른다.
+- 로그인, 로그아웃, 인증 상태, `/api` 통신 변경은 공통 체크리스트 `../../AGENTS/harness/checklists/shop-auth-api-flow.md`를 함께 따른다.
 
 ### 완료 기준
 - lint, typecheck, build가 모두 성공해야 한다.
