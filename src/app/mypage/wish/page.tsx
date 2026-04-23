@@ -1,7 +1,6 @@
-import { cookies } from "next/headers";
 import { fetchShopMypageWishPageServerData } from "@/domains/mypage/api/mypageServerApi";
 import ShopMypageWishSection from "@/domains/mypage/components/ShopMypageWishSection";
-import { buildForwardCookieHeader } from "@/shared/server/shopCookieHeader";
+import { requireAuthenticatedShopRequestContext } from "@/shared/server/shopAuthServer";
 
 interface ShopMypageWishPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -19,16 +18,22 @@ function resolvePageNo(rawPageNo: string | string[] | undefined): number {
   return Math.floor(parsedPageNo);
 }
 
+// 현재 위시리스트 경로를 로그인 복귀용 상대 경로로 생성합니다.
+function buildShopMypageWishPath(pageNo: number): string {
+  const searchParams = new URLSearchParams();
+  searchParams.set("pageNo", String(pageNo));
+  return `/mypage/wish?${searchParams.toString()}`;
+}
+
 // 쇼핑몰 마이페이지 위시리스트 화면을 렌더링합니다.
 export default async function ShopMypageWishPage({ searchParams }: ShopMypageWishPageProps) {
   // URL 쿼리에서 pageNo를 추출합니다.
   const resolvedSearchParams = searchParams ? await Promise.resolve(searchParams) : {};
   const pageNo = resolvePageNo(resolvedSearchParams.pageNo);
 
-  // 현재 요청 쿠키를 백엔드 SSR 호출 헤더로 전달합니다.
-  const cookieStore = await cookies();
-  const cookieHeader = buildForwardCookieHeader(cookieStore, ["cust_no"]);
-  const wishPageData = await fetchShopMypageWishPageServerData(pageNo, cookieHeader);
+  // 로그인된 요청의 세션 쿠키를 사용해 위시리스트 데이터를 조회합니다.
+  const requestContext = await requireAuthenticatedShopRequestContext(buildShopMypageWishPath(pageNo));
+  const wishPageData = await fetchShopMypageWishPageServerData(pageNo, requestContext.cookieHeader);
 
   return <ShopMypageWishSection wishPageData={wishPageData} />;
 }

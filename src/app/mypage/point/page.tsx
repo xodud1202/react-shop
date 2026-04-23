@@ -1,7 +1,6 @@
-import { cookies } from "next/headers";
 import { fetchShopMypagePointPageServerData } from "@/domains/mypage/api/mypageServerApi";
 import ShopMypagePointSection from "@/domains/mypage/components/ShopMypagePointSection";
-import { buildForwardCookieHeader } from "@/shared/server/shopCookieHeader";
+import { requireAuthenticatedShopRequestContext } from "@/shared/server/shopAuthServer";
 
 interface ShopMypagePointPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -17,16 +16,22 @@ function resolvePageNo(rawPageNo: string | string[] | undefined): number {
   return Math.floor(parsedPageNo);
 }
 
+// 현재 포인트 내역 경로를 로그인 복귀용 상대 경로로 생성합니다.
+function buildShopMypagePointPath(pageNo: number): string {
+  const searchParams = new URLSearchParams();
+  searchParams.set("pageNo", String(pageNo));
+  return `/mypage/point?${searchParams.toString()}`;
+}
+
 // 쇼핑몰 마이페이지 포인트 내역 화면을 렌더링합니다.
 export default async function ShopMypagePointPage({ searchParams }: ShopMypagePointPageProps) {
   // URL 쿼리에서 페이지 번호를 추출합니다.
   const resolvedSearchParams = searchParams ? await Promise.resolve(searchParams) : {};
   const pageNo = resolvePageNo(resolvedSearchParams.pageNo);
 
-  // 현재 요청 쿠키를 백엔드 SSR 호출 헤더로 전달합니다.
-  const cookieStore = await cookies();
-  const cookieHeader = buildForwardCookieHeader(cookieStore, ["cust_no"]);
-  const pointPageData = await fetchShopMypagePointPageServerData(pageNo, cookieHeader);
+  // 로그인된 요청의 세션 쿠키를 사용해 포인트 내역을 조회합니다.
+  const requestContext = await requireAuthenticatedShopRequestContext(buildShopMypagePointPath(pageNo));
+  const pointPageData = await fetchShopMypagePointPageServerData(pageNo, requestContext.cookieHeader);
 
   return (
     <ShopMypagePointSection

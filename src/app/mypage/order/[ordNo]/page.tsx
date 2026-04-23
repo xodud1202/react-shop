@@ -1,8 +1,8 @@
-import { cookies } from "next/headers";
 import { fetchShopMypageOrderDetailPageServerData } from "@/domains/mypage/api/mypageServerApi";
 import ShopMypageOrderDetailSection from "@/domains/mypage/components/ShopMypageOrderDetailSection";
 import ShopMypageOrderInvalidRedirect from "@/domains/mypage/components/ShopMypageOrderInvalidRedirect";
-import { buildForwardCookieHeader } from "@/shared/server/shopCookieHeader";
+import { requireAuthenticatedShopRequestContext } from "@/shared/server/shopAuthServer";
+import { buildShopMypageOrderDetailHref } from "@/domains/mypage/utils/shopMypageOrder";
 
 interface ShopMypageOrderDetailPageProps {
   params?: Promise<{
@@ -29,10 +29,9 @@ export default async function ShopMypageOrderDetailPage({ params }: ShopMypageOr
     return <ShopMypageOrderInvalidRedirect alertMessage="주문번호를 확인할 수 없어 주문내역으로 이동합니다." />;
   }
 
-  // 현재 요청 쿠키를 백엔드 SSR 호출 헤더로 전달합니다.
-  const cookieStore = await cookies();
-  const cookieHeader = buildForwardCookieHeader(cookieStore, ["cust_no"]);
-  const orderDetailPageData = await fetchShopMypageOrderDetailPageServerData(ordNo, cookieHeader);
+  // 로그인된 요청의 세션 쿠키를 사용해 주문상세 데이터를 조회합니다.
+  const requestContext = await requireAuthenticatedShopRequestContext(buildShopMypageOrderDetailHref(ordNo));
+  const orderDetailPageData = await fetchShopMypageOrderDetailPageServerData(ordNo, requestContext.cookieHeader);
 
   // 유효하지 않은 주문번호면 주문내역 페이지로 이동시킵니다.
   if (!orderDetailPageData) {

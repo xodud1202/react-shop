@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { resolveSafeReturnUrl } from "@/domains/login/utils/loginRedirectUtils";
-import { emitShopAuthChangeEvent } from "@/shared/auth/shopAuthEvent";
+import { useShopAuth } from "@/shared/auth/ShopAuthProvider";
 import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import { PRIVATE_POLICY_PARAGRAPHS, TERMS_PARAGRAPHS } from "@/domains/policy/constants/policyDocuments";
 import type { ShopGoogleJoinApiRequest, ShopGoogleJoinApiResponse, ShopGoogleProfile } from "@/domains/login/types";
@@ -28,6 +28,7 @@ type ModalType = "private" | "terms" | null;
 // 구글 신규 회원 추가 정보 입력 폼을 렌더링합니다.
 export default function ShopAdditionalInfoForm({ profile, recommendedLoginId, returnUrl }: ShopAdditionalInfoFormProps) {
   const router = useRouter();
+  const { refreshAuth } = useShopAuth();
   const safeReturnUrl = resolveSafeReturnUrl(returnUrl);
   const [custNm, setCustNm] = useState(profile.name);
   const [sex, setSex] = useState<"X" | "M" | "F">("X");
@@ -128,11 +129,8 @@ export default function ShopAdditionalInfoForm({ profile, recommendedLoginId, re
 
       // 회원가입 후 로그인 성공이면 홈 화면으로 이동합니다.
       if (result.data.loginSuccess) {
-        // 로그인 성공 상태를 헤더에 즉시 반영합니다.
-        emitShopAuthChangeEvent({
-          isLoggedIn: true,
-          custNo: result.data.custNo ? String(result.data.custNo) : "",
-        });
+        // 회원가입 직후 현재 인증 상태를 다시 조회합니다.
+        await refreshAuth();
         router.replace(safeReturnUrl);
         router.refresh();
         return;

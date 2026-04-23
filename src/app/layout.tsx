@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import Script from "next/script";
 import ShopHeader from "@/domains/header/components/ShopHeader";
 import ShopFooter from "@/domains/footer/components/ShopFooter";
-import ShopSessionKeeper from "@/domains/login/components/ShopSessionKeeper";
 import { fetchShopHeaderServerData } from "@/domains/header/api/headerServerApi";
+import ShopAuthProvider from "@/shared/auth/ShopAuthProvider";
 import { createShopPageMetadata } from "@/shared/seo/shopMetadata";
+import { fetchShopServerRequestContext } from "@/shared/server/shopAuthServer";
 import "./globals.css";
 import "swiper/css";
 import "swiper/css/navigation";
@@ -19,18 +19,20 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // 헤더 공통 데이터(카테고리/브랜드)를 SSR로 조회합니다.
-  const cookieStore = await cookies();
-  const headerData = await fetchShopHeaderServerData();
-  const isLoggedIn = (cookieStore.get("cust_no")?.value ?? "").trim() !== "";
+  // 헤더 공통 데이터와 현재 로그인 상태를 SSR로 함께 조회합니다.
+  const [headerData, requestContext] = await Promise.all([
+    fetchShopHeaderServerData(),
+    fetchShopServerRequestContext(),
+  ]);
 
   return (
     <html lang="ko">
       <body className="antialiased">
-        <ShopSessionKeeper />
-        <ShopHeader initialCategoryTree={headerData.categories} initialBrands={headerData.brands} isLoggedIn={isLoggedIn} />
-        <main>{children}</main>
-        <ShopFooter />
+        <ShopAuthProvider initialState={requestContext.authState}>
+          <ShopHeader initialCategoryTree={headerData.categories} initialBrands={headerData.brands} />
+          <main>{children}</main>
+          <ShopFooter />
+        </ShopAuthProvider>
         <Script
           src="https://kit.fontawesome.com/ffb719f976.js"
           crossOrigin="anonymous"

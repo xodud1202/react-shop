@@ -1,9 +1,10 @@
-import { cookies } from "next/headers";
 import { fetchShopMypageOrderReturnPageServerData } from "@/domains/mypage/api/mypageServerApi";
 import ShopMypageOrderInvalidRedirect from "@/domains/mypage/components/ShopMypageOrderInvalidRedirect";
 import ShopMypageOrderReturnSection from "@/domains/mypage/components/ShopMypageOrderReturnSection";
-import { buildShopMypageOrderDetailHref } from "@/domains/mypage/utils/shopMypageOrder";
-import { buildForwardCookieHeader } from "@/shared/server/shopCookieHeader";
+import {
+  buildShopMypageOrderDetailHref,
+} from "@/domains/mypage/utils/shopMypageOrder";
+import { requireAuthenticatedShopRequestContext } from "@/shared/server/shopAuthServer";
 
 interface ShopMypageOrderReturnPageProps {
   params?: Promise<{
@@ -30,6 +31,18 @@ function resolveOrderDetailNo(rawOrdDtlNo: string | string[] | undefined): numbe
   return Math.floor(parsedValue);
 }
 
+// 주문번호와 주문상세번호 기준 반품 신청 경로를 로그인 복귀용 상대 경로로 생성합니다.
+function buildShopMypageOrderReturnPath(ordNo: string, ordDtlNo: number | undefined): string {
+  const normalizedOrdNo = ordNo.trim();
+  if (typeof ordDtlNo !== "number") {
+    return `/mypage/order/${encodeURIComponent(normalizedOrdNo)}/return`;
+  }
+
+  const searchParams = new URLSearchParams();
+  searchParams.set("ordDtlNo", String(ordDtlNo));
+  return `/mypage/order/${encodeURIComponent(normalizedOrdNo)}/return?${searchParams.toString()}`;
+}
+
 // 쇼핑몰 마이페이지 반품 신청 화면을 렌더링합니다.
 export default async function ShopMypageOrderReturnPage({
   params,
@@ -46,10 +59,13 @@ export default async function ShopMypageOrderReturnPage({
     return <ShopMypageOrderInvalidRedirect alertMessage="주문번호를 확인할 수 없어 주문내역으로 이동합니다." />;
   }
 
-  // 현재 요청 쿠키를 백엔드 SSR 호출 헤더로 전달합니다.
-  const cookieStore = await cookies();
-  const cookieHeader = buildForwardCookieHeader(cookieStore, ["cust_no"]);
-  const orderReturnPageData = await fetchShopMypageOrderReturnPageServerData(ordNo, ordDtlNo, cookieHeader);
+  // 로그인된 요청의 세션 쿠키를 사용해 반품 신청 데이터를 조회합니다.
+  const requestContext = await requireAuthenticatedShopRequestContext(buildShopMypageOrderReturnPath(ordNo, ordDtlNo));
+  const orderReturnPageData = await fetchShopMypageOrderReturnPageServerData(
+    ordNo,
+    ordDtlNo,
+    requestContext.cookieHeader,
+  );
 
   // 유효하지 않은 반품 화면 진입이면 주문상세 페이지로 이동시킵니다.
   if (!orderReturnPageData) {

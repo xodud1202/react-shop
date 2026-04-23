@@ -1,11 +1,10 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { fetchShopOrderPageServerData } from "@/domains/order/api/orderServerApi";
 import ShopOrderInvalidEntryHandler from "@/domains/order/components/ShopOrderInvalidEntryHandler";
 import ShopOrderSection from "@/domains/order/components/ShopOrderSection";
 import type { ShopOrderEntryInfo, ShopOrderPaymentFailureInfo } from "@/domains/order/types";
 import { buildLoginFormPath } from "@/domains/login/utils/loginRedirectUtils";
-import { buildForwardCookieHeader } from "@/shared/server/shopCookieHeader";
+import { requireAuthenticatedShopRequestContext } from "@/shared/server/shopAuthServer";
 
 interface ShopOrderPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -83,18 +82,15 @@ export default async function ShopOrderPage({ searchParams }: ShopOrderPageProps
   if (cartIdList.length === 0) {
     return <ShopOrderInvalidEntryHandler goodsId={goodsId} />;
   }
+  const currentOrderPath = buildCurrentOrderPath(cartIdList, goodsId);
 
-  // 현재 요청 쿠키를 백엔드 SSR 호출 헤더로 전달합니다.
-  const cookieStore = await cookies();
-  const cookieHeader = buildForwardCookieHeader(cookieStore, ["cust_no"]);
-  if (cookieHeader.trim() === "") {
-    redirect(buildLoginFormPath(buildCurrentOrderPath(cartIdList, goodsId)));
-  }
+  // 로그인된 요청의 세션 쿠키를 사용해 주문서 페이지 데이터를 조회합니다.
+  const requestContext = await requireAuthenticatedShopRequestContext(currentOrderPath);
 
   // 주문서 페이지 API를 호출해 유효한 cartId인지 확인합니다.
-  const orderPageResult = await fetchShopOrderPageServerData(cartIdList, cookieHeader);
+  const orderPageResult = await fetchShopOrderPageServerData(cartIdList, requestContext.cookieHeader);
   if (orderPageResult.status === 401) {
-    redirect(buildLoginFormPath(buildCurrentOrderPath(cartIdList, goodsId)));
+    redirect(buildLoginFormPath(currentOrderPath));
   }
   if (!orderPageResult.ok) {
     return <ShopOrderInvalidEntryHandler goodsId={goodsId} message={orderPageResult.message} />;

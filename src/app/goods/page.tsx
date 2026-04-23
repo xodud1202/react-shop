@@ -46,7 +46,7 @@ export default async function GoodsPage({ searchParams }: GoodsPageProps) {
 
   // 현재 요청 쿠키를 백엔드 SSR 호출 헤더로 전달합니다.
   const cookieStore = await cookies();
-  const cookieHeader = buildForwardCookieHeader(cookieStore, ["cust_no", "cust_grade_cd"]);
+  const cookieHeader = buildForwardCookieHeader(cookieStore);
   const goodsDetailData = await loadShopGoodsDetailData(goodsId, cookieHeader);
 
   return <ShopGoodsDetailTop detailData={goodsDetailData} requestedGoodsId={goodsId} requestedExhibitionNo={exhibitionNo} />;

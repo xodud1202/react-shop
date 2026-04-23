@@ -1,7 +1,6 @@
-import { cookies } from "next/headers";
 import { fetchShopMypageOrderPageServerData } from "@/domains/mypage/api/mypageServerApi";
 import ShopMypageOrderSection from "@/domains/mypage/components/ShopMypageOrderSection";
-import { buildForwardCookieHeader } from "@/shared/server/shopCookieHeader";
+import { requireAuthenticatedShopRequestContext } from "@/shared/server/shopAuthServer";
 
 type ShopMypageOrderRange = "1m" | "3m" | "6m" | "custom";
 
@@ -114,20 +113,29 @@ function resolveOrderSearchState(searchParamMap: Record<string, string | string[
   };
 }
 
+// 현재 주문내역 경로를 로그인 복귀용 상대 경로로 생성합니다.
+function buildShopMypageOrderPath(orderSearchState: ShopMypageOrderResolvedSearchState): string {
+  const searchParams = new URLSearchParams();
+  searchParams.set("range", orderSearchState.range);
+  searchParams.set("pageNo", String(orderSearchState.pageNo));
+  searchParams.set("startDate", orderSearchState.startDate);
+  searchParams.set("endDate", orderSearchState.endDate);
+  return `/mypage/order?${searchParams.toString()}`;
+}
+
 // 쇼핑몰 마이페이지 주문내역 화면을 렌더링합니다.
 export default async function ShopMypageOrderPage({ searchParams }: ShopMypageOrderPageProps) {
   // URL 쿼리에서 조회 범위와 페이지 번호를 추출합니다.
   const resolvedSearchParams = searchParams ? await Promise.resolve(searchParams) : {};
   const orderSearchState = resolveOrderSearchState(resolvedSearchParams);
 
-  // 현재 요청 쿠키를 백엔드 SSR 호출 헤더로 전달합니다.
-  const cookieStore = await cookies();
-  const cookieHeader = buildForwardCookieHeader(cookieStore, ["cust_no"]);
+  // 로그인된 요청의 세션 쿠키를 사용해 주문내역 데이터를 조회합니다.
+  const requestContext = await requireAuthenticatedShopRequestContext(buildShopMypageOrderPath(orderSearchState));
   const orderPageData = await fetchShopMypageOrderPageServerData(
     orderSearchState.pageNo,
     orderSearchState.startDate,
     orderSearchState.endDate,
-    cookieHeader,
+    requestContext.cookieHeader,
   );
 
   return (

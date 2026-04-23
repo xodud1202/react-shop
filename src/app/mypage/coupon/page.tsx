@@ -1,7 +1,6 @@
-import { cookies } from "next/headers";
 import { fetchShopMypageCouponPageServerData } from "@/domains/mypage/api/mypageServerApi";
 import ShopMypageCouponSection from "@/domains/mypage/components/ShopMypageCouponSection";
-import { buildForwardCookieHeader } from "@/shared/server/shopCookieHeader";
+import { requireAuthenticatedShopRequestContext } from "@/shared/server/shopAuthServer";
 
 interface ShopMypageCouponPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -24,6 +23,15 @@ function resolveCouponTab(rawTab: string | string[] | undefined): "owned" | "dow
   return tabSource === "downloadable" ? "downloadable" : "owned";
 }
 
+// 현재 쿠폰함 경로를 로그인 복귀용 상대 경로로 생성합니다.
+function buildShopMypageCouponPath(ownedPageNo: number, downloadablePageNo: number, activeTab: "owned" | "downloadable"): string {
+  const searchParams = new URLSearchParams();
+  searchParams.set("ownedPageNo", String(ownedPageNo));
+  searchParams.set("downloadablePageNo", String(downloadablePageNo));
+  searchParams.set("tab", activeTab);
+  return `/mypage/coupon?${searchParams.toString()}`;
+}
+
 // 쇼핑몰 마이페이지 쿠폰함 화면을 렌더링합니다.
 export default async function ShopMypageCouponPage({ searchParams }: ShopMypageCouponPageProps) {
   // URL 쿼리에서 탭별 페이지 번호와 활성 탭을 추출합니다.
@@ -32,10 +40,15 @@ export default async function ShopMypageCouponPage({ searchParams }: ShopMypageC
   const downloadablePageNo = resolvePageNo(resolvedSearchParams.downloadablePageNo);
   const initialActiveTab = resolveCouponTab(resolvedSearchParams.tab);
 
-  // 현재 요청 쿠키를 백엔드 SSR 호출 헤더로 전달합니다.
-  const cookieStore = await cookies();
-  const cookieHeader = buildForwardCookieHeader(cookieStore, ["cust_no"]);
-  const couponPageData = await fetchShopMypageCouponPageServerData(ownedPageNo, downloadablePageNo, cookieHeader);
+  // 로그인된 요청의 세션 쿠키를 사용해 쿠폰함 데이터를 조회합니다.
+  const requestContext = await requireAuthenticatedShopRequestContext(
+    buildShopMypageCouponPath(ownedPageNo, downloadablePageNo, initialActiveTab),
+  );
+  const couponPageData = await fetchShopMypageCouponPageServerData(
+    ownedPageNo,
+    downloadablePageNo,
+    requestContext.cookieHeader,
+  );
 
   return <ShopMypageCouponSection couponPageData={couponPageData} initialActiveTab={initialActiveTab} />;
 }

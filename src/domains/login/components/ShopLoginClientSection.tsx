@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import ShopAdditionalInfoForm from "@/domains/login/components/ShopAdditionalInfoForm";
 import ShopGoogleLoginButton from "@/domains/login/components/ShopGoogleLoginButton";
 import { resolveSafeReturnUrl } from "@/domains/login/utils/loginRedirectUtils";
-import { emitShopAuthChangeEvent } from "@/shared/auth/shopAuthEvent";
+import { useShopAuth } from "@/shared/auth/ShopAuthProvider";
 import { requestShopClientApi } from "@/shared/client/shopClientApi";
 import type { ShopGoogleLoginApiResponse, ShopGoogleProfile } from "@/domains/login/types";
 import styles from "./ShopLoginClientSection.module.css";
@@ -18,6 +18,7 @@ interface ShopLoginClientSectionProps {
 // 로그인 페이지의 구글 로그인 및 추가 정보 입력 흐름을 관리합니다.
 export default function ShopLoginClientSection({ googleClientId, returnUrl }: ShopLoginClientSectionProps) {
   const router = useRouter();
+  const { refreshAuth } = useShopAuth();
   const safeReturnUrl = resolveSafeReturnUrl(returnUrl);
   const [googleProfile, setGoogleProfile] = useState<ShopGoogleProfile | null>(null);
   const [recommendedLoginId, setRecommendedLoginId] = useState("");
@@ -50,11 +51,8 @@ export default function ShopLoginClientSection({ googleClientId, returnUrl }: Sh
 
       // 기존 회원이면 홈으로 이동합니다.
       if (result.data.loginSuccess) {
-        // 로그인 성공 상태를 헤더에 즉시 반영합니다.
-        emitShopAuthChangeEvent({
-          isLoggedIn: true,
-          custNo: result.data.custNo ? String(result.data.custNo) : "",
-        });
+        // 로그인 직후 현재 인증 상태를 다시 조회합니다.
+        await refreshAuth();
         router.replace(safeReturnUrl);
         router.refresh();
         return;

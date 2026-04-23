@@ -1,7 +1,6 @@
-import { cookies } from "next/headers";
 import { fetchShopMypageCancelHistoryPageServerData } from "@/domains/mypage/api/mypageServerApi";
 import ShopMypageCancelSection from "@/domains/mypage/components/ShopMypageCancelSection";
-import { buildForwardCookieHeader } from "@/shared/server/shopCookieHeader";
+import { requireAuthenticatedShopRequestContext } from "@/shared/server/shopAuthServer";
 
 type ShopMypageCancelRange = "1m" | "3m" | "6m" | "custom";
 
@@ -109,20 +108,29 @@ function resolveCancelSearchState(searchParamMap: Record<string, string | string
   };
 }
 
+// 현재 취소내역 경로를 로그인 복귀용 상대 경로로 생성합니다.
+function buildShopMypageCancelPath(cancelSearchState: ShopMypageCancelResolvedSearchState): string {
+  const searchParams = new URLSearchParams();
+  searchParams.set("range", cancelSearchState.range);
+  searchParams.set("pageNo", String(cancelSearchState.pageNo));
+  searchParams.set("startDate", cancelSearchState.startDate);
+  searchParams.set("endDate", cancelSearchState.endDate);
+  return `/mypage/cancel?${searchParams.toString()}`;
+}
+
 // 쇼핑몰 마이페이지 취소내역 화면을 렌더링합니다.
 export default async function ShopMypageCancelPage({ searchParams }: ShopMypageCancelPageProps) {
   // URL 쿼리에서 조회 범위와 페이지 번호를 추출합니다.
   const resolvedSearchParams = searchParams ? await Promise.resolve(searchParams) : {};
   const cancelSearchState = resolveCancelSearchState(resolvedSearchParams);
 
-  // 현재 요청 쿠키를 백엔드 SSR 호출 헤더로 전달합니다.
-  const cookieStore = await cookies();
-  const cookieHeader = buildForwardCookieHeader(cookieStore, ["cust_no"]);
+  // 로그인된 요청의 세션 쿠키를 사용해 취소내역 데이터를 조회합니다.
+  const requestContext = await requireAuthenticatedShopRequestContext(buildShopMypageCancelPath(cancelSearchState));
   const cancelPageData = await fetchShopMypageCancelHistoryPageServerData(
     cancelSearchState.pageNo,
     cancelSearchState.startDate,
     cancelSearchState.endDate,
-    cookieHeader,
+    requestContext.cookieHeader,
   );
 
   return (
