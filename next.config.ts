@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // Google Identity Services popup이 로그인 직후 이동한 페이지에서도 postMessage를 전달할 수 있도록 전체 화면 COOP를 완화합니다.
+  // FedCM 비지원 브라우저의 Google GIS popup fallback을 위해 전체 화면 COOP를 완화합니다.
   async headers() {
     return [
       {
