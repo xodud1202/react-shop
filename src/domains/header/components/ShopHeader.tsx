@@ -174,7 +174,7 @@ export default function ShopHeader({ initialCategoryTree, initialBrands }: ShopH
           <div className={styles.headerRow}>
             <div className={styles.logoWrap}>
               <Link href="/" aria-label="메인으로 이동">
-                <Image src={DEFAULT_LOGO_URL} alt="xodud1202 로고" width={160} height={38} style={{ height: "auto" }} priority />
+                <Image src={DEFAULT_LOGO_URL} alt="xodud1202 로고" width={160} height={38} priority />
               </Link>
             </div>
 
@@ -348,7 +348,7 @@ export default function ShopHeader({ initialCategoryTree, initialBrands }: ShopH
       <div className={styles.mobileHeader}>
         <div className={styles.mobileHeaderRow}>
           <Link href="/" aria-label="메인으로 이동">
-            <Image src={DEFAULT_LOGO_URL} alt="xodud1202 로고" width={130} height={30} style={{ height: "auto" }} />
+            <Image src={DEFAULT_LOGO_URL} alt="xodud1202 로고" width={130} height={30} />
           </Link>
           <button type="button" className={styles.iconButton} onClick={handleToggleSearchLayer} aria-label="검색 열기">
             <i className="fa-solid fa-magnifying-glass" />
