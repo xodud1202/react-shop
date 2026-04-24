@@ -25,6 +25,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Google Identity Services popup이 postMessage로 로그인 결과를 전달할 수 있도록 로그인 페이지 COOP를 완화합니다.
+  async headers() {
+    return [
+      {
+        source: "/login/:path*",
+        headers: [
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin-allow-popups",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

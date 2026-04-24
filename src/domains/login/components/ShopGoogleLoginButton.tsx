@@ -48,9 +48,32 @@ declare global {
   }
 }
 
+let initializedGoogleClientId = "";
+let activeGoogleCredentialHandler: ((response: GoogleCredentialResponse) => void) | null = null;
+
+// 구글 SDK의 전역 credential 콜백을 현재 활성 로그인 컴포넌트로 위임합니다.
+function handleGlobalGoogleCredentialResponse(response: GoogleCredentialResponse): void {
+  activeGoogleCredentialHandler?.(response);
+}
+
+// 구글 로그인 SDK는 페이지당 한 번만 초기화해 중복 initialize 경고를 방지합니다.
+function initializeGoogleIdentityClient(clientId: string): void {
+  if (initializedGoogleClientId === clientId) {
+    return;
+  }
+
+  window.google?.accounts?.id.initialize({
+    client_id: clientId,
+    callback: handleGlobalGoogleCredentialResponse,
+    ux_mode: "popup",
+  });
+  initializedGoogleClientId = clientId;
+}
+
 // 구글 로그인 버튼을 렌더링합니다.
 export default function ShopGoogleLoginButton({ clientId, onGoogleProfile }: ShopGoogleLoginButtonProps) {
   const buttonContainerRef = useRef<HTMLDivElement | null>(null);
+  const onGoogleProfileRef = useRef(onGoogleProfile);
   const [isGoogleScriptLoaded, setIsGoogleScriptLoaded] = useState<boolean>(() => {
     // 초기 렌더링 시 이미 로드된 구글 SDK를 감지합니다.
     return typeof window !== "undefined" && Boolean(window.google?.accounts?.id);
@@ -66,6 +89,11 @@ export default function ShopGoogleLoginButton({ clientId, onGoogleProfile }: Sho
       ? runtimeErrorMessage
       : "";
 
+  // 부모 컴포넌트가 다시 렌더링되어도 구글 SDK 콜백은 최신 핸들러를 참조합니다.
+  useEffect(() => {
+    onGoogleProfileRef.current = onGoogleProfile;
+  }, [onGoogleProfile]);
+
   // 스크립트와 clientId가 준비되면 구글 로그인 버튼을 렌더링합니다.
   useEffect(() => {
     // 필수 설정값이 없으면 버튼 렌더링을 중단합니다.
@@ -79,26 +107,23 @@ export default function ShopGoogleLoginButton({ clientId, onGoogleProfile }: Sho
     }
 
     // 구글 credential 응답을 파싱해 상위 로그인 흐름으로 전달합니다.
-    const handleCredentialResponse = (response: GoogleCredentialResponse) => {
+    const handleCredentialResponse = (response: GoogleCredentialResponse): void => {
       const decodedPayload = decodeGoogleCredentialPayload(response.credential ?? "");
       const profile = toGoogleProfile(decodedPayload);
 
       // 정상 프로필이면 상위 로그인 흐름으로 전달합니다.
       if (profile) {
-        onGoogleProfile(profile);
+        onGoogleProfileRef.current(profile);
         return;
       }
 
       // 프로필 파싱 실패 시 오류 문구를 노출합니다.
       setRuntimeErrorMessage("구글 사용자 정보를 확인할 수 없습니다.");
     };
+    activeGoogleCredentialHandler = handleCredentialResponse;
 
-    // 구글 로그인 클라이언트를 초기화합니다.
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleCredentialResponse,
-      ux_mode: "popup",
-    });
+    // 구글 로그인 클라이언트는 전역 1회만 초기화합니다.
+    initializeGoogleIdentityClient(clientId);
 
     // 버튼 컨테이너를 비운 뒤 현재 너비 기준으로 버튼을 렌더링합니다.
     buttonContainerRef.current.innerHTML = "";
@@ -110,11 +135,19 @@ export default function ShopGoogleLoginButton({ clientId, onGoogleProfile }: Sho
       shape: "rectangular",
       width: Math.max(260, Math.min(Math.floor(buttonContainerRef.current.clientWidth), 420)),
     });
-  }, [clientId, isClientIdMissing, isGoogleScriptLoaded, onGoogleProfile]);
+
+    return () => {
+      // 언마운트된 버튼 인스턴스로 credential 응답이 전달되지 않도록 정리합니다.
+      if (activeGoogleCredentialHandler === handleCredentialResponse) {
+        activeGoogleCredentialHandler = null;
+      }
+    };
+  }, [clientId, isClientIdMissing, isGoogleScriptLoaded]);
 
   return (
     <section className={styles.buttonSection} aria-label="구글 로그인 영역">
       <Script
+        id="google-identity-services-client"
         src="https://accounts.google.com/gsi/client"
         strategy="afterInteractive"
         onLoad={() => {
