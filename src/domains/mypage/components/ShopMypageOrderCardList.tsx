@@ -23,6 +23,11 @@ import {
   resolveShopMypageOrderVisibleActionLabelList,
 } from "@/domains/mypage/utils/shopMypageOrder";
 import {
+  isShopMypageOrderExchangeWithdrawActionLabel,
+  requestShopMypageOrderExchangeWithdraw,
+  resolveShopMypageOrderExchangeWithdrawSuccessMessage,
+} from "@/domains/mypage/utils/shopMypageOrderExchangeWithdraw";
+import {
   isShopMypageOrderReturnWithdrawActionLabel,
   requestShopMypageOrderReturnWithdraw,
   resolveShopMypageOrderReturnWithdrawSuccessMessage,
@@ -82,6 +87,28 @@ export default function ShopMypageOrderCardList({
       }
 
       window.alert(resolveShopMypageOrderStatusActionSuccessMessage(actionLabel));
+      router.refresh();
+    } catch {
+      window.alert(`${actionLabel} 처리에 실패했습니다.`);
+    } finally {
+      setProcessingActionKey("");
+    }
+  };
+
+  // 교환 철회 액션을 호출하고 현재 화면 데이터를 새로고침합니다.
+  const handleExchangeWithdrawAction = async (ordNo: string, ordDtlNo: number, actionLabel: string): Promise<void> => {
+    const actionKey = `${ordNo}-${ordDtlNo}-${actionLabel}`;
+
+    // 동일 액션 중복 클릭을 막고 서버 검증 결과를 사용자에게 즉시 노출합니다.
+    setProcessingActionKey(actionKey);
+    try {
+      const result = await requestShopMypageOrderExchangeWithdraw(ordNo, ordDtlNo);
+      if (!result.ok || !result.data) {
+        window.alert(result.message || `${actionLabel} 처리에 실패했습니다.`);
+        return;
+      }
+
+      window.alert(resolveShopMypageOrderExchangeWithdrawSuccessMessage());
       router.refresh();
     } catch {
       window.alert(`${actionLabel} 처리에 실패했습니다.`);
@@ -206,6 +233,21 @@ export default function ShopMypageOrderCardList({
                               disabled={processingActionKey !== ""}
                               onClick={() => {
                                 void handleStatusAction(detailItem.ordNo, detailItem.ordDtlNo, actionLabel);
+                              }}
+                            >
+                              {isProcessingAction ? `${actionLabel} 처리중...` : actionLabel}
+                            </button>
+                          );
+                        }
+                        if (isShopMypageOrderExchangeWithdrawActionLabel(actionLabel)) {
+                          return (
+                            <button
+                              key={actionKey}
+                              type="button"
+                              className={styles.actionButton}
+                              disabled={processingActionKey !== ""}
+                              onClick={() => {
+                                void handleExchangeWithdrawAction(detailItem.ordNo, detailItem.ordDtlNo, actionLabel);
                               }}
                             >
                               {isProcessingAction ? `${actionLabel} 처리중...` : actionLabel}

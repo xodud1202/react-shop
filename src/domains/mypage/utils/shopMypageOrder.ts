@@ -1,5 +1,9 @@
 import type { ShopMypageOrderDetailItem, ShopMypageOrderStatusSummary } from "@/domains/mypage/types";
 import {
+  isShopMypageOrderExchangeWithdrawable,
+  SHOP_MYPAGE_ORDER_ACTION_EXCHANGE_WITHDRAW,
+} from "@/domains/mypage/utils/shopMypageOrderExchangeWithdraw";
+import {
   isShopMypageOrderReturnWithdrawable,
   SHOP_MYPAGE_ORDER_ACTION_RETURN_WITHDRAW,
 } from "@/domains/mypage/utils/shopMypageOrderReturnWithdraw";
@@ -139,6 +143,9 @@ export function resolveShopMypageOrderDisplayStatusName(detailItem: ShopMypageOr
 export function resolveShopMypageOrderVisibleActionLabelList(detailItem: ShopMypageOrderDetailItem): string[] {
   if (detailItem.activeReturnClaimYn && isShopMypageOrderReturnWithdrawable(detailItem)) {
     return [SHOP_MYPAGE_ORDER_ACTION_RETURN_WITHDRAW, "1:1문의"];
+  }
+  if (detailItem.activeExchangeClaimYn && isShopMypageOrderExchangeWithdrawable(detailItem)) {
+    return [SHOP_MYPAGE_ORDER_ACTION_EXCHANGE_WITHDRAW, "1:1문의"];
   }
 
   return resolveShopMypageOrderActionLabelList(detailItem.ordDtlStatCd).filter((actionLabel) => {

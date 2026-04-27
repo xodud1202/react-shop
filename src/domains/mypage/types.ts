@@ -328,6 +328,26 @@ export interface ShopMypageOrderReturnWithdrawResponse {
   updatedCount: number;
 }
 
+// 마이페이지 주문교환 철회 요청 타입입니다.
+export interface ShopMypageOrderExchangeWithdrawRequest {
+  ordNo: string;
+  ordDtlNo: number;
+}
+
+// 마이페이지 주문교환 철회 응답 타입입니다.
+export interface ShopMypageOrderExchangeWithdrawResponse {
+  clmNo: string;
+  ordNo: string;
+  ordDtlNo: number;
+  chgDtlStatCd: string;
+  deliveryChgDtlStatCd: string;
+  claimClosedYn: boolean;
+  paymentCancelYn: boolean;
+  refundPayNo: number | null;
+  payStatCd: string | null;
+  updatedCount: number;
+}
+
 // 마이페이지 주문상태 변경 요청 타입입니다.
 export interface ShopMypageOrderStatusActionRequest {
   ordNo: string;
