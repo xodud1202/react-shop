@@ -1,4 +1,4 @@
-import type { ShopOrderAddress } from "@/domains/order/types";
+import type { ShopOrderAddress, ShopOrderPaymentMethodCd, ShopOrderPaymentPrepareResponse } from "@/domains/order/types";
 
 // 마이페이지 위시리스트 상품 아이템 타입입니다.
 export interface ShopMypageWishGoodsItem {
@@ -150,6 +150,32 @@ export interface ShopMypageOrderReturnPageResponse {
   customerPhoneNumber: string;
 }
 
+// 마이페이지 교환 사유 코드 아이템 타입입니다.
+export type ShopMypageOrderExchangeReasonItem = ShopMypageOrderCancelReasonItem;
+
+// 마이페이지 교환 신청 상품별 사이즈 옵션 타입입니다.
+export interface ShopMypageOrderExchangeSizeOption {
+  ordDtlNo: number;
+  goodsId: string;
+  sizeId: string;
+  stockQty: number;
+  addAmt: number;
+  dispOrd: number;
+  soldOut: boolean;
+}
+
+// 마이페이지 교환 신청 화면 응답 타입입니다.
+export interface ShopMypageOrderExchangePageResponse {
+  order: ShopMypageOrderGroup | null;
+  reasonList: ShopMypageOrderExchangeReasonItem[];
+  siteInfo: ShopMypageOrderCancelSiteInfo;
+  sizeOptionList: ShopMypageOrderExchangeSizeOption[];
+  addressList: ShopOrderAddress[];
+  pickupAddress: ShopOrderAddress | null;
+  deliveryAddress: ShopOrderAddress | null;
+  customerPhoneNumber: string;
+}
+
 // 마이페이지 주문취소 제출용 미리보기 금액 타입입니다.
 export interface ShopMypageOrderCancelPreviewAmount {
   expectedRefundAmt: number;
@@ -216,6 +242,74 @@ export interface ShopMypageOrderReturnSubmitRequest {
 export interface ShopMypageOrderReturnSubmitResponse {
   clmNo: string;
   ordNo: string;
+}
+
+// 마이페이지 주문교환 제출 주문상품 아이템 타입입니다.
+export interface ShopMypageOrderExchangeSubmitItem {
+  ordDtlNo: number;
+  exchangeQty: number;
+  targetSizeId: string;
+  reasonCd: string;
+  reasonDetail: string;
+}
+
+// 마이페이지 주문교환 제출 주소 타입입니다.
+export interface ShopMypageOrderExchangeSubmitAddress {
+  rsvNm: string;
+  postNo: string;
+  baseAddress: string;
+  detailAddress: string;
+}
+
+// 마이페이지 주문교환 제출 요청 타입입니다.
+export interface ShopMypageOrderExchangeSubmitRequest {
+  ordNo: string;
+  exchangeItemList: ShopMypageOrderExchangeSubmitItem[];
+  pickupAddress: ShopMypageOrderExchangeSubmitAddress;
+  deliveryAddress: ShopMypageOrderExchangeSubmitAddress;
+  paymentMethodCd: ShopOrderPaymentMethodCd;
+}
+
+// 마이페이지 주문교환 제출 응답 타입입니다.
+export interface ShopMypageOrderExchangeSubmitResponse {
+  clmNo: string;
+  ordNo: string;
+  paymentRequiredYn: boolean;
+  payDelvAmt: number;
+  paymentPrepare: ShopOrderPaymentPrepareResponse | null;
+}
+
+// 마이페이지 주문교환 배송비 결제 승인 요청 타입입니다.
+export interface ShopMypageOrderExchangePaymentConfirmRequest {
+  payNo: number;
+  clmNo: string;
+  paymentKey: string;
+  amount: number;
+}
+
+// 마이페이지 주문교환 배송비 결제 승인 응답 타입입니다.
+export interface ShopMypageOrderExchangePaymentConfirmResponse {
+  clmNo: string;
+  ordNo: string;
+  payNo: number;
+  payMethodCd: ShopOrderPaymentMethodCd;
+  payStatCd: string;
+  chgDtlStatCd: string;
+  orderName: string;
+  amount: number;
+  bankCd: string;
+  bankNm: string;
+  bankNo: string;
+  vactHolderNm: string;
+  vactDueDt: string;
+}
+
+// 마이페이지 주문교환 배송비 결제 실패 요청 타입입니다.
+export interface ShopMypageOrderExchangePaymentFailRequest {
+  payNo: number;
+  clmNo: string;
+  code: string;
+  message: string;
 }
 
 // 마이페이지 주문반품 철회 요청 타입입니다.

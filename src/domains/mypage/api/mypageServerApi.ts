@@ -12,6 +12,8 @@ import type {
   ShopMypageOrderCancelSiteInfo,
   ShopMypageOrderDetailItem,
   ShopMypageOrderDetailPageResponse,
+  ShopMypageOrderExchangePageResponse,
+  ShopMypageOrderExchangeSizeOption,
   ShopMypageOrderGroup,
   ShopMypageOrderPageResponse,
   ShopMypageOrderReturnPageResponse,
@@ -282,6 +284,20 @@ function normalizeShopMypageOrderReturnFeeContext(rawValue: unknown): ShopMypage
   };
 }
 
+// 교환 신청 사이즈 옵션 응답을 기본값과 함께 정규화합니다.
+function normalizeShopMypageOrderExchangeSizeOption(rawItem: unknown): ShopMypageOrderExchangeSizeOption {
+  const source = (rawItem ?? {}) as Partial<ShopMypageOrderExchangeSizeOption>;
+  return {
+    ordDtlNo: normalizeNonNegativeNumber(source.ordDtlNo),
+    goodsId: normalizeString(source.goodsId),
+    sizeId: normalizeString(source.sizeId),
+    stockQty: normalizeNonNegativeNumber(source.stockQty),
+    addAmt: normalizeNonNegativeNumber(source.addAmt),
+    dispOrd: normalizeNonNegativeNumber(source.dispOrd),
+    soldOut: normalizeBoolean(source.soldOut),
+  };
+}
+
 // 쿠폰 사용 불가 상품 응답 행을 기본값과 함께 정규화합니다.
 function normalizeCouponUnavailableGoodsItem(rawItem: unknown): ShopMypageCouponUnavailableGoodsItem {
   const source = (rawItem ?? {}) as Partial<ShopMypageCouponUnavailableGoodsItem>;
@@ -396,6 +412,16 @@ function buildShopMypageOrderReturnPagePath(ordNo: string, ordDtlNo?: number): s
     queryParams.set("ordDtlNo", String(Math.floor(ordDtlNo)));
   }
   return `/api/shop/mypage/order/return/page?${queryParams.toString()}`;
+}
+
+// 마이페이지 교환 신청 화면 API 경로를 생성합니다.
+function buildShopMypageOrderExchangePagePath(ordNo: string, ordDtlNo?: number): string {
+  const queryParams = new URLSearchParams();
+  queryParams.set("ordNo", normalizeString(ordNo));
+  if (typeof ordDtlNo === "number" && Number.isFinite(ordDtlNo) && ordDtlNo > 0) {
+    queryParams.set("ordDtlNo", String(Math.floor(ordDtlNo)));
+  }
+  return `/api/shop/mypage/order/exchange/page?${queryParams.toString()}`;
 }
 
 // 마이페이지 개별 쿠폰 다운로드 API 경로를 반환합니다.
@@ -670,6 +696,50 @@ export async function fetchShopMypageOrderReturnPageServerData(
     pickupAddress:
       response.pickupAddress && typeof response.pickupAddress === "object"
         ? normalizeShopOrderAddress(response.pickupAddress)
+        : null,
+    customerPhoneNumber: normalizeString(response.customerPhoneNumber),
+  };
+}
+
+// 마이페이지 교환 신청 화면 SSR 데이터를 조회합니다.
+export async function fetchShopMypageOrderExchangePageServerData(
+  ordNo: string,
+  ordDtlNo: number | undefined,
+  cookieHeader: string,
+): Promise<ShopMypageOrderExchangePageResponse | null> {
+  // 교환 신청 화면 API 경로를 생성해 응답을 조회합니다.
+  const path = buildShopMypageOrderExchangePagePath(ordNo, ordDtlNo);
+  const requestInit = buildRequestInitFromCookie(cookieHeader);
+  const response = await readShopServerApiResponse<ShopMypageOrderExchangePageResponse>(path, requestInit);
+  const defaultSiteInfo = createDefaultShopMypageOrderCancelSiteInfo();
+
+  // 응답이 없거나 주문번호가 유효하지 않으면 null을 반환합니다.
+  if (!response) {
+    return null;
+  }
+
+  const normalizedOrder = response.order ? normalizeShopMypageOrderGroup(response.order) : null;
+  if (!normalizedOrder || normalizedOrder.ordNo.trim() === "") {
+    return null;
+  }
+
+  return {
+    order: normalizedOrder,
+    reasonList: Array.isArray(response.reasonList)
+      ? response.reasonList.map((item) => normalizeShopMypageOrderCancelReasonItem(item))
+      : [],
+    siteInfo: response.siteInfo ? normalizeShopMypageOrderCancelSiteInfo(response.siteInfo) : defaultSiteInfo,
+    sizeOptionList: Array.isArray(response.sizeOptionList)
+      ? response.sizeOptionList.map((item) => normalizeShopMypageOrderExchangeSizeOption(item))
+      : [],
+    addressList: Array.isArray(response.addressList) ? response.addressList.map((item) => normalizeShopOrderAddress(item)) : [],
+    pickupAddress:
+      response.pickupAddress && typeof response.pickupAddress === "object"
+        ? normalizeShopOrderAddress(response.pickupAddress)
+        : null,
+    deliveryAddress:
+      response.deliveryAddress && typeof response.deliveryAddress === "object"
+        ? normalizeShopOrderAddress(response.deliveryAddress)
         : null,
     customerPhoneNumber: normalizeString(response.customerPhoneNumber),
   };

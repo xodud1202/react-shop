@@ -110,6 +110,12 @@ function resolveShopMypageOrderReturnPickupAddressValidationMessage(pickupAddres
   return "";
 }
 
+// 주문상세 행의 반품 가능 수량이 화면 노출 가능한 값인지 반환합니다.
+function hasVisibleReturnQty(detailItem: ShopMypageOrderDetailItem): boolean {
+  const returnableQty = Math.max(Math.floor(detailItem.cancelableQty || 0), 0);
+  return returnableQty > 0;
+}
+
 // 일반 금액 문자열을 `-#,###원` 또는 `#,###원` 형식으로 변환합니다.
 function formatShopMypageOrderAmountText(value: number): string {
   const safeValue = Number.isFinite(value) ? Math.floor(value) : 0;
@@ -338,10 +344,12 @@ export default function ShopMypageOrderReturnSection({
       return null;
     }
 
-    // 진행 중 반품/교환 클레임 상품은 반품신청 화면 상단 목록에서 제외합니다.
+    // 진행 중 반품/교환 클레임 상품과 반품 가능 수량이 없는 상품은 반품신청 화면 상단 목록에서 제외합니다.
     return {
       ...order,
-      detailList: order.detailList.filter((detailItem) => !hasShopMypageOrderBlockedClaim(detailItem)),
+      detailList: order.detailList.filter(
+        (detailItem) => !hasShopMypageOrderBlockedClaim(detailItem) && hasVisibleReturnQty(detailItem),
+      ),
     };
   }, [order]);
   const returnableDetailList = useMemo(
@@ -593,9 +601,9 @@ export default function ShopMypageOrderReturnSection({
         )}
       </section>
 
-      <div className={styles.cancelActionBar}>
-        {submitMessage !== "" ? <p className={styles.cancelValidationMessage}>{submitMessage}</p> : null}
-        <div className={styles.cancelActionButtonGroup}>
+      <div className={styles.claimActionFooter}>
+        {submitMessage !== "" ? <p className={styles.claimActionValidationMessage}>{submitMessage}</p> : null}
+        <div className={styles.claimActionButtonGroup}>
           <button type="button" className={styles.cancelSubmitButton} disabled={submitDisabled} onClick={handleSubmit}>
             반품신청
           </button>

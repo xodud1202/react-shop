@@ -79,6 +79,14 @@ export function buildShopMypageOrderReturnHref(ordNo: string, ordDtlNo: number):
   return `/mypage/order/${encodeURIComponent(normalizedOrdNo)}/return?${queryParams.toString()}`;
 }
 
+// 주문번호/주문상세번호 기준 교환신청 화면 링크를 생성합니다.
+export function buildShopMypageOrderExchangeHref(ordNo: string, ordDtlNo: number): string {
+  const normalizedOrdNo = ordNo.trim();
+  const queryParams = new URLSearchParams();
+  queryParams.set("ordDtlNo", String(Math.max(Math.floor(ordDtlNo), 1)));
+  return `/mypage/order/${encodeURIComponent(normalizedOrdNo)}/exchange?${queryParams.toString()}`;
+}
+
 // 주문상세 상태코드 기준 우측 액션 버튼 목록을 반환합니다.
 export function resolveShopMypageOrderActionLabelList(ordDtlStatCd: string): string[] {
   if (ordDtlStatCd === "ORD_DTL_STAT_01" || ordDtlStatCd === "ORD_DTL_STAT_02") {
@@ -110,6 +118,9 @@ export function resolveShopMypageOrderActionHref(
   }
   if (actionLabel === "반품신청") {
     return buildShopMypageOrderReturnHref(ordNo, ordDtlNo);
+  }
+  if (actionLabel === "교환신청") {
+    return buildShopMypageOrderExchangeHref(ordNo, ordDtlNo);
   }
   return null;
 }
