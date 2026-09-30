@@ -22,3 +22,9 @@
 - 프론트 `/api` 경로는 임의로 바꾸지 않는다.
 - API 추가, 변경, DB 연동은 `spring-back-end`에서 처리한다.
 - 상세 도메인 규칙은 향후 본 문서 하위 문서로 확장한다.
+
+### 5) 서버 상태 확인
+- `GET /healthcheck`는 로그인 없이 HTTP `200`, 평문 본문 `OK`를 반환한다.
+- `Cache-Control: no-store`와 동적 라우트를 사용해 요청마다 현재 프론트 서버에서 응답한다.
+- `node-batch`의 성공 기준인 HTTP `2xx`와 `body.trim() === "OK"`에 맞춘 응답이다.
+- 프론트 서버의 응답 가능 여부만 확인하며, Spring API나 DB의 상태를 조회하지 않는다.
